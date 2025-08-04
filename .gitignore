@@ -4,6 +4,8 @@
 
 # Ignore backup and example files
 *bak*
+bak/
 
-# Ignore all the parser logic for now
-parser/
+# Ignore GoYacc output files
+*_ygen.go
+y.output
