@@ -64,8 +64,8 @@ func TestLexSingleInstruction(t *testing.T) {
 		{"step    EQU      4", []Item{{ItemLabel, "step"}, {ItemEQU, "EQU"}, {ItemNumber, "4"}}},
 		{"JMP.A    start ; foo", []Item{{ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
 		{"foo fii JMP.A    start ; foo", []Item{{ItemLabel, "foo"}, {ItemLabel, "fii"}, {ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
-		{"foo\nfii JMP.A    start", []Item{{ItemLabel, "foo"}, {ItemLabel, "fii"}, {ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
-		{"\n\t\nfoo\nfii\t JMP.A  \t  start", []Item{{ItemLabel, "foo"}, {ItemLabel, "fii"}, {ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
+		{"foo\nfii JMP.A    start", []Item{{ItemLabel, "foo"}, {ItemEOL, "\n"}, {ItemLabel, "fii"}, {ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
+		{"\n\t\nfoo\nfii\t JMP.A  \t  start", []Item{{ItemLabel, "foo"}, {ItemEOL, "\n"}, {ItemLabel, "fii"}, {ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
 	}
 
 	for testI, test := range tests {

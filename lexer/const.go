@@ -34,6 +34,7 @@ const (
 	ItemMode                     // an instruction mode
 	ItemNumber                   // an integer number
 	ItemOperand                  // a valid operand for an expression
+	ItemEOL                      // a valid End Of Line (EOL)
 
 	// simply break up the constants ino two regions to facilitate checks
 	ItemKeyword
@@ -84,6 +85,7 @@ var itemName = map[ItemType]string{
 	ItemMode:     "mode",
 	ItemNumber:   "number",
 	ItemOperand:  "operand",
+	ItemEOL:      "EOL",
 
 	// opcodes
 	ItemDAT: "DAT",
