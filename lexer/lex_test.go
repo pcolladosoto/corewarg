@@ -36,15 +36,15 @@ func TestLexLineComments(t *testing.T) {
 
 	`
 
-	l := lex("lineCommentsTest", test)
+	l := Lex("lineCommentsTest", test)
 	for {
-		i := l.nextItem()
+		i := l.NextItem()
 
-		switch i.typ {
-		case itemEOF:
+		switch i.Typ {
+		case ItemEOF:
 			return
 		default:
-			t.Errorf("got an item other than EOF: type: %s, val: %q", i.typ, i.val)
+			t.Errorf("got an item other than EOF: type: %s, val: %q", i.Typ, i.Val)
 		}
 	}
 }
@@ -52,31 +52,31 @@ func TestLexLineComments(t *testing.T) {
 func TestLexSingleInstruction(t *testing.T) {
 	tests := []struct {
 		in   string
-		want []item
+		want []Item
 	}{
-		{"target  DAT.F   #0,     #0", []item{{itemLabel, "target"}, {itemDAT, "DAT"}, {itemF, "F"}, {itemHash, "#"}, {itemNumber, "0"}, {itemHash, "#"}, {itemNumber, "0"}}},
-		{"target  DAT.F   #-5,   #15", []item{{itemLabel, "target"}, {itemDAT, "DAT"}, {itemF, "F"}, {itemHash, "#"}, {itemNumber, "-5"}, {itemHash, "#"}, {itemNumber, "15"}}},
-		{"ADD.AB  #step,   target", []item{{itemADD, "ADD"}, {itemAB, "AB"}, {itemHash, "#"}, {itemLabel, "step"}, {itemLabel, "target"}}},
-		{"MOV.AB  #0,     @target", []item{{itemMOV, "MOV"}, {itemAB, "AB"}, {itemHash, "#"}, {itemNumber, "0"}, {itemAt, "@"}, {itemLabel, "target"}}},
-		{"JMP.A    start", []item{{itemJMP, "JMP"}, {itemA, "A"}, {itemLabel, "start"}}},
-		{"ORG     start", []item{{itemORG, "ORG"}, {itemLabel, "start"}}},
-		{"END", []item{{itemEND, "END"}}},
-		{"step    EQU      4", []item{{itemLabel, "step"}, {itemEQU, "EQU"}, {itemNumber, "4"}}},
-		{"JMP.A    start ; foo", []item{{itemJMP, "JMP"}, {itemA, "A"}, {itemLabel, "start"}}},
-		{"foo fii JMP.A    start ; foo", []item{{itemLabel, "foo"}, {itemLabel, "fii"}, {itemJMP, "JMP"}, {itemA, "A"}, {itemLabel, "start"}}},
-		{"foo\nfii JMP.A    start", []item{{itemLabel, "foo"}, {itemLabel, "fii"}, {itemJMP, "JMP"}, {itemA, "A"}, {itemLabel, "start"}}},
-		{"\n\t\nfoo\nfii\t JMP.A  \t  start", []item{{itemLabel, "foo"}, {itemLabel, "fii"}, {itemJMP, "JMP"}, {itemA, "A"}, {itemLabel, "start"}}},
+		{"target  DAT.F   #0,     #0", []Item{{ItemLabel, "target"}, {ItemDAT, "DAT"}, {ItemF, "F"}, {ItemHash, "#"}, {ItemNumber, "0"}, {ItemHash, "#"}, {ItemNumber, "0"}}},
+		{"target  DAT.F   #-5,   #15", []Item{{ItemLabel, "target"}, {ItemDAT, "DAT"}, {ItemF, "F"}, {ItemHash, "#"}, {ItemNumber, "-5"}, {ItemHash, "#"}, {ItemNumber, "15"}}},
+		{"ADD.AB  #step,   target", []Item{{ItemADD, "ADD"}, {ItemAB, "AB"}, {ItemHash, "#"}, {ItemLabel, "step"}, {ItemLabel, "target"}}},
+		{"MOV.AB  #0,     @target", []Item{{ItemMOV, "MOV"}, {ItemAB, "AB"}, {ItemHash, "#"}, {ItemNumber, "0"}, {ItemAt, "@"}, {ItemLabel, "target"}}},
+		{"JMP.A    start", []Item{{ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
+		{"ORG     start", []Item{{ItemORG, "ORG"}, {ItemLabel, "start"}}},
+		{"END", []Item{{ItemEND, "END"}}},
+		{"step    EQU      4", []Item{{ItemLabel, "step"}, {ItemEQU, "EQU"}, {ItemNumber, "4"}}},
+		{"JMP.A    start ; foo", []Item{{ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
+		{"foo fii JMP.A    start ; foo", []Item{{ItemLabel, "foo"}, {ItemLabel, "fii"}, {ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
+		{"foo\nfii JMP.A    start", []Item{{ItemLabel, "foo"}, {ItemLabel, "fii"}, {ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
+		{"\n\t\nfoo\nfii\t JMP.A  \t  start", []Item{{ItemLabel, "foo"}, {ItemLabel, "fii"}, {ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
 	}
 
 	for testI, test := range tests {
-		l := lex("singleInstructionTest", test.in)
+		l := Lex("singleInstructionTest", test.in)
 		j := 0
 		for {
-			i := l.nextItem()
+			i := l.NextItem()
 
-			slog.Info("got item", "testI", testI, "type", i.typ, "val", i.val)
+			slog.Info("got item", "testI", testI, "type", i.Typ, "val", i.Val)
 
-			if i.typ == itemEOF {
+			if i.Typ == ItemEOF {
 				break
 			}
 
@@ -85,9 +85,9 @@ func TestLexSingleInstruction(t *testing.T) {
 				continue
 			}
 
-			if i.typ != test.want[j].typ || i.val != test.want[j].val {
+			if i.Typ != test.want[j].Typ || i.Val != test.want[j].Val {
 				t.Errorf("test %d: got type: %s, val: %q; want type: %s, val: %q",
-					testI, i.typ, i.val, test.want[j].typ, test.want[j].val)
+					testI, i.Typ, i.Val, test.want[j].Typ, test.want[j].Val)
 			}
 
 			j++

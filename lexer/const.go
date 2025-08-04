@@ -2,160 +2,160 @@ package lexer
 
 import "fmt"
 
-// item represents a token or text string returned from the scanner.
-type item struct {
-	typ itemType
-	val string
+// Item represents a token or text string returned from the scanner.
+type Item struct {
+	Typ ItemType
+	Val string
 }
 
-func (i item) String() string {
+func (i Item) String() string {
 	switch {
-	case i.typ == itemEOF:
+	case i.Typ == ItemEOF:
 		return "EOF"
-	case i.typ == itemError:
-		return i.val
-	case i.typ > itemKeyword:
-		return fmt.Sprintf("<%s>", i.val)
-	case len(i.val) > 10:
-		return fmt.Sprintf("%.10q...", i.val)
+	case i.Typ == ItemError:
+		return i.Val
+	case i.Typ > ItemKeyword:
+		return fmt.Sprintf("<%s>", i.Val)
+	case len(i.Val) > 10:
+		return fmt.Sprintf("%.10q...", i.Val)
 	}
-	return fmt.Sprintf("%q", i.val)
+	return fmt.Sprintf("%q", i.Val)
 }
 
-// itemType identifies the type of lex items.
-type itemType int
+// ItemType identifies the type of lex items.
+type ItemType int
 
 const (
-	itemError    itemType = iota // error occurred; value is text of error
-	itemLabel                    // an instruction label
-	itemOpcode                   // an instruction opcode
-	itemEOF                      // EOF
-	itemModifier                 // an instruction modifier
-	itemMode                     // an instruction mode
-	itemNumber                   // an integer number
-	itemOperand                  // a valid operand for an expression
+	ItemError    ItemType = iota // error occurred; value is text of error
+	ItemLabel                    // an instruction label
+	ItemOpcode                   // an instruction opcode
+	ItemEOF                      // EOF
+	ItemModifier                 // an instruction modifier
+	ItemMode                     // an instruction mode
+	ItemNumber                   // an integer number
+	ItemOperand                  // a valid operand for an expression
 
 	// simply break up the constants ino two regions to facilitate checks
-	itemKeyword
+	ItemKeyword
 
 	// instruction opcodes
-	itemDAT
-	itemMOV
-	itemADD
-	itemSUB
-	itemMUL
-	itemDIV
-	itemMOD
-	itemJMP
-	itemJMZ
-	itemJMN
-	itemDJN
-	itemCMP
-	itemSLT
-	itemSPL
-	itemORG
-	itemEQU
-	itemEND
+	ItemDAT
+	ItemMOV
+	ItemADD
+	ItemSUB
+	ItemMUL
+	ItemDIV
+	ItemMOD
+	ItemJMP
+	ItemJMZ
+	ItemJMN
+	ItemDJN
+	ItemCMP
+	ItemSLT
+	ItemSPL
+	ItemORG
+	ItemEQU
+	ItemEND
 
 	// instruction modifiers
-	itemA
-	itemB
-	itemAB
-	itemBA
-	itemF
-	itemX
-	itemI
+	ItemA
+	ItemB
+	ItemAB
+	ItemBA
+	ItemF
+	ItemX
+	ItemI
 
 	// addressing modes
-	itemHash
-	itemDollar
-	itemAt
-	itemLt
-	itemGt
+	ItemHash
+	ItemDollar
+	ItemAt
+	ItemLt
+	ItemGt
 )
 
 // Make the types prettyprint.
-var itemName = map[itemType]string{
-	itemError:    "error",
-	itemLabel:    "label",
-	itemOpcode:   "opcode",
-	itemEOF:      "EOF",
-	itemModifier: "modifier",
-	itemMode:     "mode",
-	itemNumber:   "number",
-	itemOperand:  "operand",
+var itemName = map[ItemType]string{
+	ItemError:    "error",
+	ItemLabel:    "label",
+	ItemOpcode:   "opcode",
+	ItemEOF:      "EOF",
+	ItemModifier: "modifier",
+	ItemMode:     "mode",
+	ItemNumber:   "number",
+	ItemOperand:  "operand",
 
 	// opcodes
-	itemDAT: "DAT",
-	itemMOV: "MOV",
-	itemADD: "ADD",
-	itemSUB: "SUB",
-	itemMUL: "MUL",
-	itemDIV: "DIV",
-	itemMOD: "MOD",
-	itemJMP: "JMP",
-	itemJMZ: "JMZ",
-	itemJMN: "JMN",
-	itemDJN: "DJN",
-	itemCMP: "CMP",
-	itemSLT: "SLT",
-	itemSPL: "SPL",
-	itemORG: "ORG",
-	itemEQU: "EQU",
-	itemEND: "END",
+	ItemDAT: "DAT",
+	ItemMOV: "MOV",
+	ItemADD: "ADD",
+	ItemSUB: "SUB",
+	ItemMUL: "MUL",
+	ItemDIV: "DIV",
+	ItemMOD: "MOD",
+	ItemJMP: "JMP",
+	ItemJMZ: "JMZ",
+	ItemJMN: "JMN",
+	ItemDJN: "DJN",
+	ItemCMP: "CMP",
+	ItemSLT: "SLT",
+	ItemSPL: "SPL",
+	ItemORG: "ORG",
+	ItemEQU: "EQU",
+	ItemEND: "END",
 
 	// instruction modifiers
-	itemA:  "A",
-	itemB:  "B",
-	itemAB: "AB",
-	itemBA: "BA",
-	itemF:  "F",
-	itemX:  "X",
-	itemI:  "I",
+	ItemA:  "A",
+	ItemB:  "B",
+	ItemAB: "AB",
+	ItemBA: "BA",
+	ItemF:  "F",
+	ItemX:  "X",
+	ItemI:  "I",
 
 	// addressing modes
-	itemHash:   "#",
-	itemDollar: "$",
-	itemAt:     "@",
-	itemLt:     "<",
-	itemGt:     ">",
+	ItemHash:   "#",
+	ItemDollar: "$",
+	ItemAt:     "@",
+	ItemLt:     "<",
+	ItemGt:     ">",
 }
 
-var key = map[string]itemType{
-	"DAT": itemDAT,
-	"MOV": itemMOV,
-	"ADD": itemADD,
-	"SUB": itemSUB,
-	"MUL": itemMUL,
-	"DIV": itemDIV,
-	"MOD": itemMOD,
-	"JMP": itemJMP,
-	"JMZ": itemJMZ,
-	"JMN": itemJMN,
-	"DJN": itemDJN,
-	"CMP": itemCMP,
-	"SLT": itemSLT,
-	"SPL": itemSPL,
-	"ORG": itemORG,
-	"EQU": itemEQU,
-	"END": itemEND,
+var key = map[string]ItemType{
+	"DAT": ItemDAT,
+	"MOV": ItemMOV,
+	"ADD": ItemADD,
+	"SUB": ItemSUB,
+	"MUL": ItemMUL,
+	"DIV": ItemDIV,
+	"MOD": ItemMOD,
+	"JMP": ItemJMP,
+	"JMZ": ItemJMZ,
+	"JMN": ItemJMN,
+	"DJN": ItemDJN,
+	"CMP": ItemCMP,
+	"SLT": ItemSLT,
+	"SPL": ItemSPL,
+	"ORG": ItemORG,
+	"EQU": ItemEQU,
+	"END": ItemEND,
 
-	"A":  itemA,
-	"B":  itemB,
-	"AB": itemAB,
-	"BA": itemBA,
-	"F":  itemF,
-	"X":  itemX,
-	"I":  itemI,
+	"A":  ItemA,
+	"B":  ItemB,
+	"AB": ItemAB,
+	"BA": ItemBA,
+	"F":  ItemF,
+	"X":  ItemX,
+	"I":  ItemI,
 
-	"#": itemHash,
-	"$": itemDollar,
-	"@": itemAt,
-	"<": itemLt,
-	">": itemGt,
+	"#": ItemHash,
+	"$": ItemDollar,
+	"@": ItemAt,
+	"<": ItemLt,
+	">": ItemGt,
 }
 
-func (i itemType) String() string {
+func (i ItemType) String() string {
 	s := itemName[i]
 	if s == "" {
 		return fmt.Sprintf("item%d", int(i))

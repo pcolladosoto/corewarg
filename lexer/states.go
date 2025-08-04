@@ -6,13 +6,13 @@ import (
 )
 
 // stateFn represents the state of the scanner as a function that returns the next state.
-type stateFn func(*lexer) stateFn
+type stateFn func(*Lexer) stateFn
 
 const (
 	commentDelim = ';'
 )
 
-func lexLine(l *lexer) stateFn {
+func lexLine(l *Lexer) stateFn {
 	slog.Debug("entering lexLine", "start", l.start, "pos", l.pos, "c", string(l.peek()))
 
 	// gobble up leading whitespace
@@ -29,7 +29,7 @@ func lexLine(l *lexer) stateFn {
 
 	// we're done with the input
 	if c == eof {
-		l.emit(itemEOF)
+		l.emit(ItemEOF)
 		return nil
 	}
 
@@ -38,7 +38,7 @@ func lexLine(l *lexer) stateFn {
 	return lexInstruction
 }
 
-func lexInstruction(l *lexer) stateFn {
+func lexInstruction(l *Lexer) stateFn {
 	slog.Debug("entering lexInstruction", "start", l.start, "pos", l.pos, "c", string(l.peek()))
 	for {
 		switch r := l.next(); {
@@ -66,7 +66,7 @@ func lexInstruction(l *lexer) stateFn {
 }
 
 // lexIdentifier scans an alphanumeric or field.
-func lexIdentifier(l *lexer) stateFn {
+func lexIdentifier(l *Lexer) stateFn {
 	slog.Debug("entering lexIdentifier", "start", l.start, "pos", l.pos, "c", string(l.peek()))
 Loop:
 	for {
@@ -77,10 +77,10 @@ Loop:
 			l.backup()
 			word := l.input[l.start:l.pos]
 			switch {
-			case key[word] > itemKeyword:
+			case key[word] > ItemKeyword:
 				l.emit(key[word])
 			default:
-				l.emit(itemLabel)
+				l.emit(ItemLabel)
 			}
 			break Loop
 		}
@@ -89,16 +89,16 @@ Loop:
 }
 
 // lexNumber scans a decimal number This isn't a perfect number scanner!
-func lexNumber(l *lexer) stateFn {
+func lexNumber(l *Lexer) stateFn {
 	slog.Debug("entering lexNumber", "start", l.start, "pos", l.pos, "c", string(l.peek()))
 	if !l.scanNumber() {
 		return l.errorf("bad number syntax: %q", l.input[l.start:l.pos])
 	}
-	l.emit(itemNumber)
+	l.emit(ItemNumber)
 	return lexInstruction
 }
 
-func (l *lexer) scanNumber() bool {
+func (l *Lexer) scanNumber() bool {
 	// Optional leading sign.
 	l.accept("+-")
 
@@ -114,7 +114,7 @@ func (l *lexer) scanNumber() bool {
 	return true
 }
 
-func lexComment(l *lexer) stateFn {
+func lexComment(l *Lexer) stateFn {
 	slog.Debug("entering lexLineComment", "start", l.start, "pos", l.pos, "c", string(l.peek()))
 
 	// read until the end of line
