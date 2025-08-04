@@ -1,0 +1,9 @@
+# Ignore hidden files except the .gitignore
+.*
+!.gitignore
+
+# Ignore backup and example files
+*bak*
+
+# Ignore all the parser logic for now
+parser/
