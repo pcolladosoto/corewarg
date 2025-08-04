@@ -1,0 +1,126 @@
+package lexer
+
+import (
+	"log/slog"
+	"strings"
+)
+
+// stateFn represents the state of the scanner as a function that returns the next state.
+type stateFn func(*lexer) stateFn
+
+const (
+	commentDelim = ';'
+)
+
+func lexLine(l *lexer) stateFn {
+	slog.Debug("entering lexLine", "start", l.start, "pos", l.pos, "c", string(l.peek()))
+
+	// gobble up leading whitespace
+	for isSpace(l.next()) {
+		l.ignore()
+	}
+	l.backup()
+	c := l.next()
+
+	// lex a full line comment
+	if c == commentDelim {
+		return lexComment
+	}
+
+	// we're done with the input
+	if c == eof {
+		l.emit(itemEOF)
+		return nil
+	}
+
+	// restore the last rune and lex an instruction
+	l.backup()
+	return lexInstruction
+}
+
+func lexInstruction(l *lexer) stateFn {
+	slog.Debug("entering lexInstruction", "start", l.start, "pos", l.pos, "c", string(l.peek()))
+	for {
+		switch r := l.next(); {
+		case r == '+' || r == '-' || ('0' <= r && r <= '9'):
+			l.backup()
+			return lexNumber
+		case isAlphaNumeric(r):
+			l.backup()
+			return lexIdentifier
+		case r == '.': // instruction mode
+			l.ignore()
+			return lexIdentifier
+		case strings.Index("#$@<>", string(r)) != -1: // addressing mode
+			l.emit(key[string(r)])
+			continue
+		case r == commentDelim: // gobble trailing comments
+			return lexComment
+		case r == eof || isEOL(r):
+			return lexLine
+		case isSpace(r): // ignore whitespace
+			l.ignore()
+		}
+	}
+}
+
+// lexIdentifier scans an alphanumeric or field.
+func lexIdentifier(l *lexer) stateFn {
+	slog.Debug("entering lexIdentifier", "start", l.start, "pos", l.pos, "c", string(l.peek()))
+Loop:
+	for {
+		switch r := l.next(); {
+		case isAlphaNumeric(r):
+			// absorb.
+		default:
+			l.backup()
+			word := l.input[l.start:l.pos]
+			switch {
+			case key[word] > itemKeyword:
+				l.emit(key[word])
+			default:
+				l.emit(itemLabel)
+			}
+			break Loop
+		}
+	}
+	return lexInstruction
+}
+
+// lexNumber scans a decimal number This isn't a perfect number scanner!
+func lexNumber(l *lexer) stateFn {
+	slog.Debug("entering lexNumber", "start", l.start, "pos", l.pos, "c", string(l.peek()))
+	if !l.scanNumber() {
+		return l.errorf("bad number syntax: %q", l.input[l.start:l.pos])
+	}
+	l.emit(itemNumber)
+	return lexInstruction
+}
+
+func (l *lexer) scanNumber() bool {
+	// Optional leading sign.
+	l.accept("+-")
+
+	// Gobble up the number
+	l.acceptRun("0123456789")
+
+	// Next thing mustn't be alphanumeric.
+	if isAlphaNumeric(l.peek()) {
+		l.next()
+		return false
+	}
+
+	return true
+}
+
+func lexComment(l *lexer) stateFn {
+	slog.Debug("entering lexLineComment", "start", l.start, "pos", l.pos, "c", string(l.peek()))
+
+	// read until the end of line
+	for n := l.next(); !isEOL(n) && n != eof; n = l.next() {
+	}
+
+	// advance the position till after the comment
+	l.ignore()
+	return lexLine
+}
