@@ -57,6 +57,7 @@ func lexInstruction(l *lexer) stateFn {
 		case r == commentDelim: // gobble trailing comments
 			return lexComment
 		case r == eof || isEOL(r):
+			l.ignore() // handle EOLs within a label_list
 			return lexLine
 		case isSpace(r): // ignore whitespace
 			l.ignore()

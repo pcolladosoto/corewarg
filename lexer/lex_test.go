@@ -52,17 +52,20 @@ func TestLexLineComments(t *testing.T) {
 func TestLexSingleInstruction(t *testing.T) {
 	tests := []struct {
 		in   string
-		want []itemType
+		want []item
 	}{
-		{"target  DAT.F   #0,     #0", []itemType{itemLabel, itemDAT, itemF, itemHash, itemNumber, itemHash, itemNumber}},
-		{"target  DAT.F   #-5,   #15", []itemType{itemLabel, itemDAT, itemF, itemHash, itemNumber, itemHash, itemNumber}},
-		{"ADD.AB  #step,   target", []itemType{itemADD, itemAB, itemHash, itemLabel, itemLabel}},
-		{"MOV.AB  #0,     @target", []itemType{itemMOV, itemAB, itemHash, itemNumber, itemAt, itemLabel}},
-		{"JMP.A    start", []itemType{itemJMP, itemA, itemLabel}},
-		{"ORG     start", []itemType{itemORG, itemLabel}},
-		{"END", []itemType{itemEND}},
-		{"step    EQU      4", []itemType{itemLabel, itemEQU, itemNumber}},
-		{"JMP.A    start ; foo", []itemType{itemJMP, itemA, itemLabel}},
+		{"target  DAT.F   #0,     #0", []item{{itemLabel, "target"}, {itemDAT, "DAT"}, {itemF, "F"}, {itemHash, "#"}, {itemNumber, "0"}, {itemHash, "#"}, {itemNumber, "0"}}},
+		{"target  DAT.F   #-5,   #15", []item{{itemLabel, "target"}, {itemDAT, "DAT"}, {itemF, "F"}, {itemHash, "#"}, {itemNumber, "-5"}, {itemHash, "#"}, {itemNumber, "15"}}},
+		{"ADD.AB  #step,   target", []item{{itemADD, "ADD"}, {itemAB, "AB"}, {itemHash, "#"}, {itemLabel, "step"}, {itemLabel, "target"}}},
+		{"MOV.AB  #0,     @target", []item{{itemMOV, "MOV"}, {itemAB, "AB"}, {itemHash, "#"}, {itemNumber, "0"}, {itemAt, "@"}, {itemLabel, "target"}}},
+		{"JMP.A    start", []item{{itemJMP, "JMP"}, {itemA, "A"}, {itemLabel, "start"}}},
+		{"ORG     start", []item{{itemORG, "ORG"}, {itemLabel, "start"}}},
+		{"END", []item{{itemEND, "END"}}},
+		{"step    EQU      4", []item{{itemLabel, "step"}, {itemEQU, "EQU"}, {itemNumber, "4"}}},
+		{"JMP.A    start ; foo", []item{{itemJMP, "JMP"}, {itemA, "A"}, {itemLabel, "start"}}},
+		{"foo fii JMP.A    start ; foo", []item{{itemLabel, "foo"}, {itemLabel, "fii"}, {itemJMP, "JMP"}, {itemA, "A"}, {itemLabel, "start"}}},
+		{"foo\nfii JMP.A    start", []item{{itemLabel, "foo"}, {itemLabel, "fii"}, {itemJMP, "JMP"}, {itemA, "A"}, {itemLabel, "start"}}},
+		{"\n\t\nfoo\nfii\t JMP.A  \t  start", []item{{itemLabel, "foo"}, {itemLabel, "fii"}, {itemJMP, "JMP"}, {itemA, "A"}, {itemLabel, "start"}}},
 	}
 
 	for testI, test := range tests {
@@ -82,8 +85,9 @@ func TestLexSingleInstruction(t *testing.T) {
 				continue
 			}
 
-			if i.typ != test.want[j] {
-				t.Errorf("test %d: got type: %s, val: %q; want type: %s", testI, i.typ, i.val, test.want[j])
+			if i.typ != test.want[j].typ || i.val != test.want[j].val {
+				t.Errorf("test %d: got type: %s, val: %q; want type: %s, val: %q",
+					testI, i.typ, i.val, test.want[j].typ, test.want[j].val)
 			}
 
 			j++
