@@ -80,7 +80,7 @@ Loop:
 			l.backup()
 			word := l.input[l.start:l.pos]
 			switch {
-			case key[word] > ItemKeyword:
+			case key[word] > 0:
 				l.emit(key[word])
 			default:
 				l.emit(ItemLabel)

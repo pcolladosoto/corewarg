@@ -14,8 +14,6 @@ func (i Item) String() string {
 		return "EOF"
 	case i.Typ == ItemError:
 		return i.Val
-	case i.Typ > ItemKeyword:
-		return fmt.Sprintf("<%s>", i.Val)
 	case len(i.Val) > 10:
 		return fmt.Sprintf("%.10q...", i.Val)
 	}
@@ -26,135 +24,62 @@ func (i Item) String() string {
 type ItemType int
 
 const (
-	ItemError    ItemType = iota // error occurred; value is text of error
-	ItemLabel                    // an instruction label
-	ItemOpcode                   // an instruction opcode
-	ItemEOF                      // EOF
-	ItemModifier                 // an instruction modifier
-	ItemMode                     // an instruction mode
-	ItemNumber                   // an integer number
-	ItemOperand                  // a valid operand for an expression
-	ItemEOL                      // a valid End Of Line (EOL)
-
-	// simply break up the constants ino two regions to facilitate checks
-	ItemKeyword
-
-	// instruction opcodes
-	ItemDAT
-	ItemMOV
-	ItemADD
-	ItemSUB
-	ItemMUL
-	ItemDIV
-	ItemMOD
-	ItemJMP
-	ItemJMZ
-	ItemJMN
-	ItemDJN
-	ItemCMP
-	ItemSLT
-	ItemSPL
-	ItemORG
-	ItemEQU
-	ItemEND
-
-	// instruction modifiers
-	ItemA
-	ItemB
-	ItemAB
-	ItemBA
-	ItemF
-	ItemX
-	ItemI
-
-	// addressing modes
-	ItemHash
-	ItemDollar
-	ItemAt
-	ItemLt
-	ItemGt
+	ItemError          ItemType = iota // error occurred; value is text of error
+	ItemEOF                            // End Of File (EOF)
+	ItemEOL                            // a valid End Of Line (EOL)
+	ItemLabel                          // an instruction label (i.e. an alphanumeric)
+	ItemOpcode                         // an instruction opcode (i.e. DAT, MOV, ADD, ...)
+	ItemOpcodeModifier                 // an instruction modifier (i.e. A, B, AB, BA, F, X, I)
+	ItemAddressingMode                 // an instruction addressing mode (i.e. #, $, @, <, >)
+	ItemNumber                         // an integer number
+	ItemOperand                        // a valid operand for an expression (i.e. +, -, *, /, %)
 )
 
 // Make the types prettyprint.
 var itemName = map[ItemType]string{
-	ItemError:    "error",
-	ItemLabel:    "label",
-	ItemOpcode:   "opcode",
-	ItemEOF:      "EOF",
-	ItemModifier: "modifier",
-	ItemMode:     "mode",
-	ItemNumber:   "number",
-	ItemOperand:  "operand",
-	ItemEOL:      "EOL",
-
-	// opcodes
-	ItemDAT: "DAT",
-	ItemMOV: "MOV",
-	ItemADD: "ADD",
-	ItemSUB: "SUB",
-	ItemMUL: "MUL",
-	ItemDIV: "DIV",
-	ItemMOD: "MOD",
-	ItemJMP: "JMP",
-	ItemJMZ: "JMZ",
-	ItemJMN: "JMN",
-	ItemDJN: "DJN",
-	ItemCMP: "CMP",
-	ItemSLT: "SLT",
-	ItemSPL: "SPL",
-	ItemORG: "ORG",
-	ItemEQU: "EQU",
-	ItemEND: "END",
-
-	// instruction modifiers
-	ItemA:  "A",
-	ItemB:  "B",
-	ItemAB: "AB",
-	ItemBA: "BA",
-	ItemF:  "F",
-	ItemX:  "X",
-	ItemI:  "I",
-
-	// addressing modes
-	ItemHash:   "#",
-	ItemDollar: "$",
-	ItemAt:     "@",
-	ItemLt:     "<",
-	ItemGt:     ">",
+	ItemError:          "error",
+	ItemLabel:          "label",
+	ItemOpcode:         "opcode",
+	ItemEOF:            "EOF",
+	ItemOpcodeModifier: "modifier",
+	ItemAddressingMode: "mode",
+	ItemNumber:         "number",
+	ItemOperand:        "operand",
+	ItemEOL:            "EOL",
 }
 
 var key = map[string]ItemType{
-	"DAT": ItemDAT,
-	"MOV": ItemMOV,
-	"ADD": ItemADD,
-	"SUB": ItemSUB,
-	"MUL": ItemMUL,
-	"DIV": ItemDIV,
-	"MOD": ItemMOD,
-	"JMP": ItemJMP,
-	"JMZ": ItemJMZ,
-	"JMN": ItemJMN,
-	"DJN": ItemDJN,
-	"CMP": ItemCMP,
-	"SLT": ItemSLT,
-	"SPL": ItemSPL,
-	"ORG": ItemORG,
-	"EQU": ItemEQU,
-	"END": ItemEND,
+	"DAT": ItemOpcode,
+	"MOV": ItemOpcode,
+	"ADD": ItemOpcode,
+	"SUB": ItemOpcode,
+	"MUL": ItemOpcode,
+	"DIV": ItemOpcode,
+	"MOD": ItemOpcode,
+	"JMP": ItemOpcode,
+	"JMZ": ItemOpcode,
+	"JMN": ItemOpcode,
+	"DJN": ItemOpcode,
+	"CMP": ItemOpcode,
+	"SLT": ItemOpcode,
+	"SPL": ItemOpcode,
+	"ORG": ItemOpcode,
+	"EQU": ItemOpcode,
+	"END": ItemOpcode,
 
-	"A":  ItemA,
-	"B":  ItemB,
-	"AB": ItemAB,
-	"BA": ItemBA,
-	"F":  ItemF,
-	"X":  ItemX,
-	"I":  ItemI,
+	"A":  ItemOpcodeModifier,
+	"B":  ItemOpcodeModifier,
+	"AB": ItemOpcodeModifier,
+	"BA": ItemOpcodeModifier,
+	"F":  ItemOpcodeModifier,
+	"X":  ItemOpcodeModifier,
+	"I":  ItemOpcodeModifier,
 
-	"#": ItemHash,
-	"$": ItemDollar,
-	"@": ItemAt,
-	"<": ItemLt,
-	">": ItemGt,
+	"#": ItemAddressingMode,
+	"$": ItemAddressingMode,
+	"@": ItemAddressingMode,
+	"<": ItemAddressingMode,
+	">": ItemAddressingMode,
 }
 
 func (i ItemType) String() string {

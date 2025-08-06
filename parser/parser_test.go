@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -63,7 +64,7 @@ func TestParserSingleFieldInstruction(t *testing.T) {
 			t.Errorf("test %d failed", i)
 		}
 	}
-	fmt.Printf("programAST: %+v\n", programAST)
+	printAST(programAST)
 }
 
 func TestParserNoMode(t *testing.T) {
@@ -73,4 +74,14 @@ func TestParserNoMode(t *testing.T) {
 			t.Errorf("test %d failed", i)
 		}
 	}
+	printAST(programAST)
+}
+
+func printAST(ast []Instruction) {
+	enc, err := json.MarshalIndent(ast, "", "    ")
+	if err != nil {
+		fmt.Printf("error marshalling AST: %v\n", err)
+		return
+	}
+	fmt.Printf("programAST: %s\n", enc)
 }

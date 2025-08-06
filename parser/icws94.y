@@ -16,186 +16,126 @@ import (
 	"github.com/pcolladosoto/corewarg/lexer"
 )
 
-type label string
+type Label string
 
-type operation struct {
-	opcode int
-	modifier int
+type Operation struct {
+	Opcode Opcode
+	Modifier OpcodeModifier
 }
 
-type term struct {
-	label label
-	immediate int
+type Term struct {
+	Label Label
+	Immediate int
 }
 
-type operand struct {
-	mode int
-	expr term
+type Operand struct {
+	Mode AddressingMode
+	Expr Term
 }
 
-type instruction struct {
-	labels []label
-	operation operation
-	operandA operand
-	operandB operand
+type Instruction struct {
+	Labels []Label
+	Operation Operation
+	Operands []Operand
 }
 
-var programAST []instruction
+var programAST []Instruction
 
 %}
 
 // Declare the type for values in the stack as well as available
 // tag names to declare token and non-terminal types.
 %union {
-	num int
-	label label
-	operation operation
-	term term
-	labelList []label
-	comment string
-	instruction instruction
-	list []instruction
+	Num int
+	Label Label
+	Operation Operation
+	Term Term
+	LabelList []Label
+	Comment string
+	Instruction Instruction
+	List []Instruction
+	AddressingMode AddressingMode
+	Opcode Opcode
+	OpcodeModifier OpcodeModifier
 }
 
-%type <operation> operation
-%type <num> opcode
-%type <num> modifier
-%type <num> mode
-%type <term> expr
-%type <term> term
-%type <labelList> label_list
-%type <comment> comment
-%type <instruction> instruction
-%type <instruction> line
-%type <list> list
-%type <list> assembly_file
+%type <Operation> operation
+%type <AddressingMode> mode
+%type <Term> expr
+%type <Term> term
+%type <LabelList> label_list
+%type <Comment> comment
+%type <Instruction> instruction
+%type <Instruction> line
+%type <List> list
+%type <List> assembly_file
 
-// Declare numeral tokens with the same number as declared in the lexer (i.e. lexer.ItemNumber)
-// This list is automatically generated with an awk(1) script that's also triggered with 'go generate'.
-%token <label> LABEL    1
-%token <num> OPCODE     2
-%token <num> EOF        3
-%token <num> MODIFIER   4
-%token <num> MODE       5
-%token <num> NUMBER     6
-%token <num> OPERAND    7
-%token <num> EOL        8
-%token <num> KEYWORD    9
-%token <num> DAT        10
-%token <num> MOV        11
-%token <num> ADD        12
-%token <num> SUB        13
-%token <num> MUL        14
-%token <num> DIV        15
-%token <num> MOD        16
-%token <num> JMP        17
-%token <num> JMZ        18
-%token <num> JMN        19
-%token <num> DJN        20
-%token <num> CMP        21
-%token <num> SLT        22
-%token <num> SPL        23
-%token <num> ORG        24
-%token <num> EQU        25
-%token <num> END        26
-%token <num> A  27
-%token <num> B  28
-%token <num> AB 29
-%token <num> BA 30
-%token <num> F  31
-%token <num> X  32
-%token <num> I  33
-%token <num> HASH       34
-%token <num> DOLLAR     35
-%token <num> AT 36
-%token <num> LT 37
-%token <num> GT 38
+// Declare numeral tokens with the same number as declared in the lexer (i.e. lexer.Item*)
+// This list is automatically generated with the provided awk(1) script:
+//
+//   $ awk -f tokens.awk ../lexer/const.go
+
+%token <Num>              EOL             2
+%token <Label>            LABEL           3
+%token <Opcode>           OPCODE          4
+%token <OpcodeModifier>   OPCODE_MODIFIER 5
+%token <AddressingMode>   ADDRESSING_MODE 6
+%token <Num>              NUMBER          7
+%token <Num>              OPERAND         8
 
 // End the declarations
 %%
 
 assembly_file:
-	list {slog.Warn("redn' at assembly_file", "LIST", $1); $$ = $1; programAST = $1}
+	list {slog.Debug("redn' at assembly_file", "LIST", $1); $$ = $1; programAST = $1}
 
 list:
-	  line      {slog.Warn("redn' at list", "LINE", $1)            ; $$ = []instruction{$1}}
-	| line list {slog.Warn("redn' at list", "LINE", $1, "LIST", $2); $$ = append($2, $1)}
+	  line      {slog.Debug("redn' at list", "LINE", $1)            ; $$ = []Instruction{$1}}
+	| line list {slog.Debug("redn' at list", "LINE", $1, "LIST", $2); $$ = append($2, $1)}
 
 line:
-	  instruction {slog.Warn("redn' at line", "INSTRUCTION", $1); $$ = $1}
-	| comment     {slog.Warn("redn' at line", "COMMENT", $1)}
+	  instruction {slog.Debug("redn' at line", "INSTRUCTION", $1); $$ = $1}
+	| comment     {slog.Debug("redn' at line", "COMMENT", $1)}
 
-comment: EOL {slog.Warn("redn' at comment", "EOL", $1)}
+comment: EOL {slog.Debug("redn' at comment", "EOL", $1)}
 
 instruction:
 	  label_list operation mode expr           comment {
-		slog.Warn("redn' at instruction", "LABEL_LIST", $1, "OPERATION", $2, "MODE", $3, "EXPR", $4, "COMMENT", $5);
-		$$ = instruction{labels: $1, operation: $2, operandA: operand{mode: $3, expr: $4}}
+		slog.Debug("redn' at instruction", "LABEL_LIST", $1, "OPERATION", $2, "MODE", $3, "EXPR", $4, "COMMENT", $5);
+		$$ = Instruction{Labels: $1, Operation: $2, Operands: []Operand{{Mode: $3, Expr: $4}}}
 	}
 	|            operation mode expr           comment {
-		slog.Warn("redn' at instruction", "OPERATION", $1, "MODE", $2, "EXPR", $3, "COMMENT", $4);
-		$$ = instruction{labels: nil, operation: $1, operandA: operand{mode: $2, expr: $3}}
+		slog.Debug("redn' at instruction", "OPERATION", $1, "MODE", $2, "EXPR", $3, "COMMENT", $4);
+		$$ = Instruction{Labels: nil, Operation: $1, Operands: []Operand{{Mode: $2, Expr: $3}}}
 	}
 	| label_list operation mode expr mode expr comment {
-		slog.Warn("redn' at instruction", "LABEL_LIST", $1, "OPERATION", $2, "MODE", $3, "EXPR", $4, "MODE", $5, "EXPR", $6, "COMMENT", $7);
-		$$ = instruction{labels: $1, operation: $2, operandA: operand{mode: $3, expr: $4}, operandB: operand{mode: $5, expr: $6}}
+		slog.Debug("redn' at instruction", "LABEL_LIST", $1, "OPERATION", $2, "MODE", $3, "EXPR", $4, "MODE", $5, "EXPR", $6, "COMMENT", $7);
+		$$ = Instruction{Labels: $1, Operation: $2, Operands: []Operand{{Mode: $3, Expr: $4}, {Mode: $5, Expr: $6}}}
 	}
 	|            operation mode expr mode expr comment {
-		slog.Warn("redn' at instruction", "OPERATION", $1, "MODE", $2, "EXPR", $3, "MODE", $4, "EXPR", $5, "COMMENT", $6);
-		$$ = instruction{labels: nil, operation: $1, operandA: operand{mode: $2, expr: $3}, operandB: operand{mode: $4, expr: $5}}
+		slog.Debug("redn' at instruction", "OPERATION", $1, "MODE", $2, "EXPR", $3, "MODE", $4, "EXPR", $5, "COMMENT", $6);
+		$$ = Instruction{Labels: nil, Operation: $1, Operands: []Operand{{Mode: $2, Expr: $3}, {Mode: $4, Expr: $5}}}
 	}
 
 label_list:
-	  LABEL                {slog.Warn("redn' at label_list", "LABEL", $1)                             ; $$ = []label{$1}}
-	| LABEL label_list     {slog.Warn("redn' at label_list", "LABEL", $1, "LABEL_LIST", $2)           ; $$ = append($2, $1)}
-	| LABEL EOL label_list {slog.Warn("redn' at label_list", "LABEL", $1, "EOL", $2, "LABEL_LIST", $3); $$ = append($3, $1)}
+	  LABEL                {slog.Debug("redn' at label_list", "LABEL", $1)                             ; $$ = []Label{$1}}
+	| LABEL label_list     {slog.Debug("redn' at label_list", "LABEL", $1, "LABEL_LIST", $2)           ; $$ = append($2, $1)}
+	| LABEL EOL label_list {slog.Debug("redn' at label_list", "LABEL", $1, "EOL", $2, "LABEL_LIST", $3); $$ = append($3, $1)}
 
 operation:
-	  opcode          {slog.Warn("reduction at operation", "OPCODE", $1)                ; $$ = operation{$1, -1}}
-	| opcode modifier {slog.Warn("reduction at operation", "OPCODE", $1, "MODIFIER", $2); $$ = operation{$1, $2}}
-
-opcode:
-	  DAT {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| MOV {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| ADD {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| SUB {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| MUL {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| DIV {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| MOD {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| JMP {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| JMZ {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| JMN {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| DJN {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| CMP {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| SLT {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| SPL {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| ORG {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| EQU {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-	| END {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
-
-modifier:
-	  A  {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
-	| B  {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
-	| AB {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
-	| BA {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
-	| F  {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
-	| X  {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
-	| I  {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
+	  OPCODE                 {slog.Debug("redn' at operation", "OPCODE", $1)                       ; $$ = Operation{$1, NONE}}
+	| OPCODE OPCODE_MODIFIER {slog.Debug("redn' at operation", "OPCODE", $1, "OPCODE_MODIFIER", $2); $$ = Operation{$1, $2}}
 
 mode:
-	  HASH        {slog.Warn("redn' at mode", "MODE", $1);      $$ = $1}
-	| DOLLAR      {slog.Warn("redn' at mode", "MODE", $1);      $$ = $1}
-	| AT          {slog.Warn("redn' at mode", "MODE", $1);      $$ = $1}
-	| LT          {slog.Warn("redn' at mode", "MODE", $1);      $$ = $1}
-	| GT          {slog.Warn("redn' at mode", "MODE", $1);      $$ = $1}
-	| /* empty */ {slog.Warn("redn' at mode", "MODE", "EMPTY"); $$ = -1}
+	  ADDRESSING_MODE {slog.Debug("redn' at mode", "ADDRESSING_MODE", $1);      $$ = $1}
+	| /* empty */     {slog.Debug("redn' at mode", "ADDRESSING_MODE", "EMPTY")}
 
 expr:
-	term {slog.Warn("reduction at expr", "TERM", $1); $$ = $1}
+	term {slog.Debug("reduction at expr", "TERM", $1); $$ = $1}
 
 term:
-	  LABEL  {slog.Warn("redn' at term",  "LABEL", $1); $$ = term{label: $1, immediate: -1}}
-	| NUMBER {slog.Warn("redn' at term", "NUMBER", $1); $$ = term{immediate: $1, label: ""}}
+	  LABEL  {slog.Debug("redn' at term",  "LABEL", $1); $$ = Term{Label: $1, Immediate: -1}}
+	| NUMBER {slog.Debug("redn' at term", "NUMBER", $1); $$ = Term{Label: "", Immediate: $1}}
 
 %%
 
@@ -218,29 +158,48 @@ type corewarLex struct {
 // the exprSymType.
 func (x *corewarLex) Lex(yylval *corewarSymType) int {
 	ni := x.l.NextItem()
-	slog.Info("got item", "typ", ni.Typ, "val", ni.Val)
+	slog.Debug("got item", "typ", ni.Typ, "val", ni.Val)
 
+	var err error
 	switch ni.Typ {
 	case lexer.ItemNumber:
 		pInt, err := strconv.ParseInt(ni.Val, 10, 32)
 		if err != nil {
 			slog.Error("error parsing number %q: %v\n", ni.Val, err)
 		}
-		yylval.num = int(pInt)
-
-		return int(lexer.ItemNumber)
+		yylval.Num = int(pInt)
 
 	case lexer.ItemLabel:
-		yylval.label = label(ni.Val)
-		return int(ni.Typ)
+		yylval.Label = Label(ni.Val)
+
+	case lexer.ItemOpcode:
+		yylval.Opcode, err = NewOpcode(ni.Val)
+		if err != nil {
+			slog.Error("error processing opcode", "err", err)
+			return -1 // Will this work?
+		}
+
+	case lexer.ItemOpcodeModifier:
+		yylval.OpcodeModifier, err = NewOpcodeModifier(ni.Val)
+		if err != nil {
+			slog.Error("error processing opcode modifier", "err", err)
+			return -1 // Will this work?
+		}
+
+	case lexer.ItemAddressingMode:
+		yylval.AddressingMode, err = NewAddressingMode(ni.Val)
+		if err != nil {
+			slog.Error("error processing addressing mode", "err", err)
+			return -1 // Will this work?
+		}
 
 	case lexer.ItemEOF:
 		return 0 // GoYacc expects EOF to be 0
 
 	default:
-		yylval.num = int(ni.Typ)
-		return int(ni.Typ)
+		yylval.Num = int(ni.Typ)
 	}
+	return int(ni.Typ)
 }
 
 func (x *corewarLex) Error(s string) {

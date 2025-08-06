@@ -54,18 +54,18 @@ func TestLexSingleInstruction(t *testing.T) {
 		in   string
 		want []Item
 	}{
-		{"target  DAT.F   #0,     #0", []Item{{ItemLabel, "target"}, {ItemDAT, "DAT"}, {ItemF, "F"}, {ItemHash, "#"}, {ItemNumber, "0"}, {ItemHash, "#"}, {ItemNumber, "0"}}},
-		{"target  DAT.F   #-5,   #15", []Item{{ItemLabel, "target"}, {ItemDAT, "DAT"}, {ItemF, "F"}, {ItemHash, "#"}, {ItemNumber, "-5"}, {ItemHash, "#"}, {ItemNumber, "15"}}},
-		{"ADD.AB  #step,   target", []Item{{ItemADD, "ADD"}, {ItemAB, "AB"}, {ItemHash, "#"}, {ItemLabel, "step"}, {ItemLabel, "target"}}},
-		{"MOV.AB  #0,     @target", []Item{{ItemMOV, "MOV"}, {ItemAB, "AB"}, {ItemHash, "#"}, {ItemNumber, "0"}, {ItemAt, "@"}, {ItemLabel, "target"}}},
-		{"JMP.A    start", []Item{{ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
-		{"ORG     start", []Item{{ItemORG, "ORG"}, {ItemLabel, "start"}}},
-		{"END", []Item{{ItemEND, "END"}}},
-		{"step    EQU      4", []Item{{ItemLabel, "step"}, {ItemEQU, "EQU"}, {ItemNumber, "4"}}},
-		{"JMP.A    start ; foo", []Item{{ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
-		{"foo fii JMP.A    start ; foo", []Item{{ItemLabel, "foo"}, {ItemLabel, "fii"}, {ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
-		{"foo\nfii JMP.A    start", []Item{{ItemLabel, "foo"}, {ItemEOL, "\n"}, {ItemLabel, "fii"}, {ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
-		{"\n\t\nfoo\nfii\t JMP.A  \t  start", []Item{{ItemLabel, "foo"}, {ItemEOL, "\n"}, {ItemLabel, "fii"}, {ItemJMP, "JMP"}, {ItemA, "A"}, {ItemLabel, "start"}}},
+		{"target  DAT.F   #0,     #0", []Item{{ItemLabel, "target"}, {ItemOpcode, "DAT"}, {ItemOpcodeModifier, "F"}, {ItemAddressingMode, "#"}, {ItemNumber, "0"}, {ItemAddressingMode, "#"}, {ItemNumber, "0"}}},
+		{"target  DAT.F   #-5,   #15", []Item{{ItemLabel, "target"}, {ItemOpcode, "DAT"}, {ItemOpcodeModifier, "F"}, {ItemAddressingMode, "#"}, {ItemNumber, "-5"}, {ItemAddressingMode, "#"}, {ItemNumber, "15"}}},
+		{"ADD.AB  #step,   target", []Item{{ItemOpcode, "ADD"}, {ItemOpcodeModifier, "AB"}, {ItemAddressingMode, "#"}, {ItemLabel, "step"}, {ItemLabel, "target"}}},
+		{"MOV.AB  #0,     @target", []Item{{ItemOpcode, "MOV"}, {ItemOpcodeModifier, "AB"}, {ItemAddressingMode, "#"}, {ItemNumber, "0"}, {ItemAddressingMode, "@"}, {ItemLabel, "target"}}},
+		{"JMP.A    start", []Item{{ItemOpcode, "JMP"}, {ItemOpcodeModifier, "A"}, {ItemLabel, "start"}}},
+		{"ORG     start", []Item{{ItemOpcode, "ORG"}, {ItemLabel, "start"}}},
+		{"END", []Item{{ItemOpcode, "END"}}},
+		{"step    EQU      4", []Item{{ItemLabel, "step"}, {ItemOpcode, "EQU"}, {ItemNumber, "4"}}},
+		{"JMP.A    start ; foo", []Item{{ItemOpcode, "JMP"}, {ItemOpcodeModifier, "A"}, {ItemLabel, "start"}}},
+		{"foo fii JMP.A    start ; foo", []Item{{ItemLabel, "foo"}, {ItemLabel, "fii"}, {ItemOpcode, "JMP"}, {ItemOpcodeModifier, "A"}, {ItemLabel, "start"}}},
+		{"foo\nfii JMP.A    start", []Item{{ItemLabel, "foo"}, {ItemEOL, "\n"}, {ItemLabel, "fii"}, {ItemOpcode, "JMP"}, {ItemOpcodeModifier, "A"}, {ItemLabel, "start"}}},
+		{"\n\t\nfoo\nfii\t JMP.A  \t  start", []Item{{ItemLabel, "foo"}, {ItemEOL, "\n"}, {ItemLabel, "fii"}, {ItemOpcode, "JMP"}, {ItemOpcodeModifier, "A"}, {ItemLabel, "start"}}},
 	}
 
 	for testI, test := range tests {
