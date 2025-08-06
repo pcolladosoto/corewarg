@@ -40,10 +40,29 @@ func TestParserSimple(t *testing.T) {
 	}
 }
 
-// func TestParserError(t *testing.T) {
-// 	tests := []string{"5 WRONG 4\n", "5 WRONG 4"}
-// 	for _, test := range tests {
-// 		slog.Info("test", "rc", corewarParse(&corewarLex{l: lexer.Lex("parseTest", test)}))
-// 	}
+func TestParserError(t *testing.T) {
+	tests := []string{"5 WRONG 4\n", "5 WRONG 4"}
+	for i, test := range tests {
+		if rc := corewarParse(&corewarLex{l: lexer.Lex("parseTest", test)}); rc == 0 {
+			t.Errorf("test %d passed and it shouldn't...", i)
+		}
+	}
+}
 
-// }
+func TestParserSingleFieldInstruction(t *testing.T) {
+	tests := []string{"JMP.A    #start\n"}
+	for i, test := range tests {
+		if rc := corewarParse(&corewarLex{l: lexer.Lex("parseTest", test)}); rc != 0 {
+			t.Errorf("test %d failed", i)
+		}
+	}
+}
+
+func TestParserNoMode(t *testing.T) {
+	tests := []string{"JMP.A    start\n", "ADD.A  0, target\n"}
+	for i, test := range tests {
+		if rc := corewarParse(&corewarLex{l: lexer.Lex("parseTest", test)}); rc != 0 {
+			t.Errorf("test %d failed", i)
+		}
+	}
+}
