@@ -32,16 +32,18 @@ func init() {
 
 // Remember to run 'gp generate' beforehand!
 func TestParserSimple(t *testing.T) {
-	tests := []string{"5 ADD 4\n", "5 ADD 4"}
-	for _, test := range tests {
-		slog.Info("test", "rc", corewarParse(&corewarLex{l: lexer.Lex("parseTest", test)}))
+	tests := []string{"ADD.A  #0, #target\n", "ADD.A  #0, #target\nADD.A  #0, #target\n"}
+	for i, test := range tests {
+		if rc := corewarParse(&corewarLex{l: lexer.Lex("parseTest", test)}); rc != 0 {
+			t.Errorf("test %d failed", i)
+		}
 	}
 }
 
-func TestParserError(t *testing.T) {
-	tests := []string{"5 WRONG 4\n", "5 WRONG 4"}
-	for _, test := range tests {
-		slog.Info("test", "rc", corewarParse(&corewarLex{l: lexer.Lex("parseTest", test)}))
-	}
+// func TestParserError(t *testing.T) {
+// 	tests := []string{"5 WRONG 4\n", "5 WRONG 4"}
+// 	for _, test := range tests {
+// 		slog.Info("test", "rc", corewarParse(&corewarLex{l: lexer.Lex("parseTest", test)}))
+// 	}
 
-}
+// }

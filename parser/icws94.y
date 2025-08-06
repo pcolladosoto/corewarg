@@ -22,23 +22,63 @@ import (
 // tag names to declare token and non-terminal types.
 %union {
 	num int
+	line string
 }
 
+%type <line> instruction
+
 // Declare numeral tokens with the same number as declared in the lexer (i.e. lexer.ItemNumber)
-%token <num> NUM 6
-%token PLUS 12 // Use ADD (i.e. lexer.ItemADD) as a placeholder for now...
+%token <num> NUMBER 6
+
+%token LABEL 1
 %token EOL 8
 
-%left PLUS
+%token <num> DAT 10
+%token <num> ADD 12
+
+%token <num> A 27
+
+%token HASH 34
+
+// %left ADD
 
 // End the declarations
 %%
 
-top: expr EOL {slog.Warn("reduction with expr and EOL")}
-	| expr {slog.Warn("reduction with expr w/o EOL")}
+assembly_file: list {slog.Warn("reduction at assembly_file with list")}
 
-expr: expr PLUS expr {slog.Warn("reduction with ADD")}
-	| NUM {slog.Warn("reduction with NUM", "NUM", $1)}
+list: line {slog.Warn("reduction at list with line")}
+	| line list {slog.Warn("reduction at list with line, list")}
+
+line: instruction {slog.Warn("reduction at line with instruction", "instruction", $1)}
+	| comment {slog.Warn("reduction at line with comment")}
+
+comment: EOL {slog.Warn("reduction at comment with EOL")}
+
+instruction: label_list operation mode comment {slog.Warn("reduction at instruction with label_list, operation, mode, comment")}
+	| operation mode comment {slog.Warn("reduction at instruction with label_list, operation, mode, comment")}
+	| label_list operation mode expr mode expr comment {slog.Warn("reduction at instruction with label_list, operation, mode, expr, mode, expr, comment")}
+	| operation mode expr mode expr comment {slog.Warn("reduction at instruction with label_list, operation, mode, expr, mode, expr, comment")}
+
+label_list: LABEL {slog.Warn("reduction at label_list with LABEL")}
+	| LABEL label_list {slog.Warn("reduction at label_list with LABEL, label_list")}
+	| LABEL EOL label_list {slog.Warn("reduction at label_list with LABEL, EOL")}
+	// | /* empty */  {slog.Warn("reduction at label_list with EMPTY")} // This causes shift/reduce conflicts!
+
+operation: opcode {slog.Warn("reduction at operation with opcode")}
+	| opcode modifier  {slog.Warn("reduction at operation with opcode, modifier")}
+
+opcode: ADD {slog.Warn("reduction at opcode with ADD", "ADD", $1)}
+	| DAT {slog.Warn("reduction at opcode with DAT", "DAT", $1)}
+
+modifier: A {slog.Warn("reduction at modifier with A", "A", $1)}
+
+mode: HASH {slog.Warn("reduction at mode with HASH")}
+
+expr: term {slog.Warn("reduction at expr with term")}
+
+term: LABEL {slog.Warn("reduction at term with LABEL")}
+	| NUMBER {slog.Warn("reduction at term with NUMBER")}
 
 %%
 
@@ -61,7 +101,7 @@ type corewarLex struct {
 // the exprSymType.
 func (x *corewarLex) Lex(yylval *corewarSymType) int {
 	ni := x.l.NextItem()
-	slog.Debug("got item", "typ", ni.Typ, "val", ni.Val)
+	slog.Info("got item", "typ", ni.Typ, "val", ni.Val)
 
 	switch ni.Typ {
 	case lexer.ItemNumber:
