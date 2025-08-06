@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+	l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		AddSource: true,
-		Level:     slog.LevelInfo,
+		Level:     slog.LevelDebug,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			// Remove time.
 			if a.Key == slog.TimeKey && len(groups) == 0 {
@@ -29,13 +29,22 @@ func init() {
 			return a
 		},
 	}))
-	slog.SetDefault(logger)
+	logger = l
 
 	// Make parsing errors actually useful
 	corewarErrorVerbose = true
 
 	// parser verbosity; one of [0, 4]
 	corewarDebug = 0
+}
+
+func printAST(ast []Instruction) {
+	enc, err := json.MarshalIndent(ast, "", "    ")
+	if err != nil {
+		fmt.Printf("error marshalling AST: %v\n", err)
+		return
+	}
+	fmt.Printf("programAST: %s\n", enc)
 }
 
 // Remember to run 'gp generate' beforehand!
@@ -77,11 +86,22 @@ func TestParserNoMode(t *testing.T) {
 	printAST(programAST)
 }
 
-func printAST(ast []Instruction) {
-	enc, err := json.MarshalIndent(ast, "", "    ")
+func TestParserFiles(t *testing.T) {
+	dataDir := "../lexer/testdata"
+	paths, err := os.ReadDir(dataDir)
 	if err != nil {
-		fmt.Printf("error marshalling AST: %v\n", err)
-		return
+		t.Fatalf("error reading dir contents: %v", err)
 	}
-	fmt.Printf("programAST: %s\n", enc)
+
+	for i, file := range paths {
+		prog, err := os.ReadFile(fmt.Sprintf("%s/%s", dataDir, file.Name()))
+		if err != nil {
+			t.Errorf("error reading file %q: %v", file.Name(), err)
+		}
+
+		if rc := corewarParse(&corewarLex{l: lexer.Lex("parseTest", string(prog))}); rc != 0 {
+			t.Errorf("test %d failed", i)
+		}
+		printAST(programAST)
+	}
 }

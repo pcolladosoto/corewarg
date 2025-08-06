@@ -27,6 +27,7 @@ const (
 	ItemError          ItemType = iota // error occurred; value is text of error
 	ItemEOF                            // End Of File (EOF)
 	ItemEOL                            // a valid End Of Line (EOL)
+	ItemComment                        // Comments are a big part of the grammar...
 	ItemLabel                          // an instruction label (i.e. an alphanumeric)
 	ItemOpcode                         // an instruction opcode (i.e. DAT, MOV, ADD, ...)
 	ItemOpcodeModifier                 // an instruction modifier (i.e. A, B, AB, BA, F, X, I)
@@ -38,14 +39,15 @@ const (
 // Make the types prettyprint.
 var itemName = map[ItemType]string{
 	ItemError:          "error",
+	ItemEOF:            "EOF",
+	ItemEOL:            "EOL",
+	ItemComment:        "comment",
 	ItemLabel:          "label",
 	ItemOpcode:         "opcode",
-	ItemEOF:            "EOF",
 	ItemOpcodeModifier: "modifier",
 	ItemAddressingMode: "mode",
 	ItemNumber:         "number",
 	ItemOperand:        "operand",
-	ItemEOL:            "EOL",
 }
 
 var key = map[string]ItemType{

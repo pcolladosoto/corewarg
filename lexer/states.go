@@ -120,11 +120,23 @@ func (l *Lexer) scanNumber() bool {
 func lexComment(l *Lexer) stateFn {
 	slog.Debug("entering lexLineComment", "start", l.start, "pos", l.pos, "c", string(l.peek()))
 
-	// read until the end of line
-	for n := l.next(); !isEOL(n) && n != eof; n = l.next() {
-	}
-
-	// advance the position till after the comment
+	// drop the comment delimiter
 	l.ignore()
-	return lexLine
+
+	// read until the end of line
+	for {
+		n := l.next()
+		slog.Debug("lexComment", "n", string(n), "l.start", l.start, "l.pos", l.pos, "l.input[l.pos:l.pos+2]", l.input[l.pos:l.pos+2])
+		if isEOL(n) {
+			l.backup()
+			l.emit(ItemComment)
+			l.next()
+			l.emit(ItemEOL)
+			return lexLine
+		}
+		if n == eof {
+			l.backup()
+			return lexLine
+		}
+	}
 }

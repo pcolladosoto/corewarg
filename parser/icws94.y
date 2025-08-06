@@ -10,11 +10,12 @@
 package parser
 
 import (
-	"log/slog"
 	"strconv"
 
 	"github.com/pcolladosoto/corewarg/lexer"
 )
+
+type Comment string
 
 type Label string
 
@@ -51,7 +52,7 @@ var programAST []Instruction
 	Operation Operation
 	Term Term
 	LabelList []Label
-	Comment string
+	Comment Comment
 	Instruction Instruction
 	List []Instruction
 	AddressingMode AddressingMode
@@ -76,66 +77,80 @@ var programAST []Instruction
 //   $ awk -f tokens.awk ../lexer/const.go
 
 %token <Num>              EOL             2
-%token <Label>            LABEL           3
-%token <Opcode>           OPCODE          4
-%token <OpcodeModifier>   OPCODE_MODIFIER 5
-%token <AddressingMode>   ADDRESSING_MODE 6
-%token <Num>              NUMBER          7
-%token <Num>              OPERAND         8
+%token <Comment>          COMMENT         3
+%token <Label>            LABEL           4
+%token <Opcode>           OPCODE          5
+%token <OpcodeModifier>   OPCODE_MODIFIER 6
+%token <AddressingMode>   ADDRESSING_MODE 7
+%token <Num>              NUMBER          8
+%token <Num>              OPERAND         9
 
 // End the declarations
 %%
 
 assembly_file:
-	list {slog.Debug("redn' at assembly_file", "LIST", $1); $$ = $1; programAST = $1}
+	list {logger.Debug("redn' at assembly_file", "LIST", $1); $$ = $1; programAST = $1}
 
 list:
-	  line      {slog.Debug("redn' at list", "LINE", $1)            ; $$ = []Instruction{$1}}
-	| line list {slog.Debug("redn' at list", "LINE", $1, "LIST", $2); $$ = append($2, $1)}
+	  line      {logger.Debug("redn' at list", "LINE", $1)            ; $$ = []Instruction{$1}}
+	| line list {logger.Debug("redn' at list", "LINE", $1, "LIST", $2); $$ = append($2, $1)}
 
 line:
-	  instruction {slog.Debug("redn' at line", "INSTRUCTION", $1); $$ = $1}
-	| comment     {slog.Debug("redn' at line", "COMMENT", $1)}
+	  instruction {logger.Debug("redn' at line", "INSTRUCTION", $1); $$ = $1}
+	| comment     {logger.Debug("redn' at line", "COMMENT", $1)}
 
-comment: EOL {slog.Debug("redn' at comment", "EOL", $1)}
+comment:
+	//   COMMENT EOL {logger.Debug("redn' at comment", "COMMENT", $1, "EOL", $2); $$ = $1}
+	  COMMENT EOL {logger.Debug("redn' at comment", "COMMENT", $1, "EOL", $2)}
+	| EOL         {logger.Debug("redn' at comment", "EOL", $1)}
 
 instruction:
 	  label_list operation mode expr           comment {
-		slog.Debug("redn' at instruction", "LABEL_LIST", $1, "OPERATION", $2, "MODE", $3, "EXPR", $4, "COMMENT", $5);
+		logger.Debug("redn' at instruction", "LABEL_LIST", $1, "OPERATION", $2, "MODE", $3, "EXPR", $4, "COMMENT", $5);
 		$$ = Instruction{Labels: $1, Operation: $2, Operands: []Operand{{Mode: $3, Expr: $4}}}
 	}
 	|            operation mode expr           comment {
-		slog.Debug("redn' at instruction", "OPERATION", $1, "MODE", $2, "EXPR", $3, "COMMENT", $4);
+		logger.Debug("redn' at instruction", "OPERATION", $1, "MODE", $2, "EXPR", $3, "COMMENT", $4);
 		$$ = Instruction{Labels: nil, Operation: $1, Operands: []Operand{{Mode: $2, Expr: $3}}}
 	}
 	| label_list operation mode expr mode expr comment {
-		slog.Debug("redn' at instruction", "LABEL_LIST", $1, "OPERATION", $2, "MODE", $3, "EXPR", $4, "MODE", $5, "EXPR", $6, "COMMENT", $7);
+		logger.Debug("redn' at instruction", "LABEL_LIST", $1, "OPERATION", $2, "MODE", $3, "EXPR", $4, "MODE", $5, "EXPR", $6, "COMMENT", $7);
 		$$ = Instruction{Labels: $1, Operation: $2, Operands: []Operand{{Mode: $3, Expr: $4}, {Mode: $5, Expr: $6}}}
 	}
 	|            operation mode expr mode expr comment {
-		slog.Debug("redn' at instruction", "OPERATION", $1, "MODE", $2, "EXPR", $3, "MODE", $4, "EXPR", $5, "COMMENT", $6);
+		logger.Debug("redn' at instruction", "OPERATION", $1, "MODE", $2, "EXPR", $3, "MODE", $4, "EXPR", $5, "COMMENT", $6);
 		$$ = Instruction{Labels: nil, Operation: $1, Operands: []Operand{{Mode: $2, Expr: $3}, {Mode: $4, Expr: $5}}}
+	}
+	// Special case for END
+	| label_list operation mode comment {
+		logger.Debug("redn' at instruction","LABEL_LIST", $1, "OPERATION", $2, "MODE", $3, "COMMENT", $4);
+		$$ = Instruction{Labels: $1, Operation: $2, Operands: []Operand{{Mode: $3}}}
+	}
+	// Special case for END
+	|            operation mode comment {
+		logger.Debug("redn' at instruction", "OPERATION", $1, "MODE", $2, "COMMENT", $3);
+		$$ = Instruction{Labels: nil, Operation: $1, Operands: []Operand{{Mode: $2}}}
 	}
 
 label_list:
-	  LABEL                {slog.Debug("redn' at label_list", "LABEL", $1)                             ; $$ = []Label{$1}}
-	| LABEL label_list     {slog.Debug("redn' at label_list", "LABEL", $1, "LABEL_LIST", $2)           ; $$ = append($2, $1)}
-	| LABEL EOL label_list {slog.Debug("redn' at label_list", "LABEL", $1, "EOL", $2, "LABEL_LIST", $3); $$ = append($3, $1)}
+	  LABEL                {logger.Debug("redn' at label_list", "LABEL", $1)                             ; $$ = []Label{$1}}
+	| LABEL label_list     {logger.Debug("redn' at label_list", "LABEL", $1, "LABEL_LIST", $2)           ; $$ = append($2, $1)}
+	| LABEL EOL label_list {logger.Debug("redn' at label_list", "LABEL", $1, "EOL", $2, "LABEL_LIST", $3); $$ = append($3, $1)}
 
 operation:
-	  OPCODE                 {slog.Debug("redn' at operation", "OPCODE", $1)                       ; $$ = Operation{$1, NONE}}
-	| OPCODE OPCODE_MODIFIER {slog.Debug("redn' at operation", "OPCODE", $1, "OPCODE_MODIFIER", $2); $$ = Operation{$1, $2}}
+	  OPCODE                 {logger.Debug("redn' at operation", "OPCODE", $1)                       ; $$ = Operation{$1, NONE}}
+	| OPCODE OPCODE_MODIFIER {logger.Debug("redn' at operation", "OPCODE", $1, "OPCODE_MODIFIER", $2); $$ = Operation{$1, $2}}
 
 mode:
-	  ADDRESSING_MODE {slog.Debug("redn' at mode", "ADDRESSING_MODE", $1);      $$ = $1}
-	| /* empty */     {slog.Debug("redn' at mode", "ADDRESSING_MODE", "EMPTY")}
+	  ADDRESSING_MODE {logger.Debug("redn' at mode", "ADDRESSING_MODE", $1);      $$ = $1}
+	| /* empty */     {logger.Debug("redn' at mode", "ADDRESSING_MODE", "EMPTY")}
 
 expr:
-	term {slog.Debug("reduction at expr", "TERM", $1); $$ = $1}
+	term {logger.Debug("reduction at expr", "TERM", $1); $$ = $1}
 
 term:
-	  LABEL  {slog.Debug("redn' at term",  "LABEL", $1); $$ = Term{Label: $1, Immediate: -1}}
-	| NUMBER {slog.Debug("redn' at term", "NUMBER", $1); $$ = Term{Label: "", Immediate: $1}}
+	  LABEL  {logger.Debug("redn' at term",  "LABEL", $1); $$ = Term{Label: $1, Immediate: -1}}
+	| NUMBER {logger.Debug("redn' at term", "NUMBER", $1); $$ = Term{Label: "", Immediate: $1}}
 
 %%
 
@@ -158,38 +173,41 @@ type corewarLex struct {
 // the exprSymType.
 func (x *corewarLex) Lex(yylval *corewarSymType) int {
 	ni := x.l.NextItem()
-	slog.Debug("got item", "typ", ni.Typ, "val", ni.Val)
+	logger.Debug("got item", "typ", ni.Typ, "val", ni.Val)
 
 	var err error
 	switch ni.Typ {
 	case lexer.ItemNumber:
 		pInt, err := strconv.ParseInt(ni.Val, 10, 32)
 		if err != nil {
-			slog.Error("error parsing number %q: %v\n", ni.Val, err)
+			logger.Error("error parsing number %q: %v\n", ni.Val, err)
 		}
 		yylval.Num = int(pInt)
 
 	case lexer.ItemLabel:
 		yylval.Label = Label(ni.Val)
 
+	case lexer.ItemComment:
+		yylval.Comment = Comment(ni.Val)
+
 	case lexer.ItemOpcode:
 		yylval.Opcode, err = NewOpcode(ni.Val)
 		if err != nil {
-			slog.Error("error processing opcode", "err", err)
+			logger.Error("error processing opcode", "err", err)
 			return -1 // Will this work?
 		}
 
 	case lexer.ItemOpcodeModifier:
 		yylval.OpcodeModifier, err = NewOpcodeModifier(ni.Val)
 		if err != nil {
-			slog.Error("error processing opcode modifier", "err", err)
+			logger.Error("error processing opcode modifier", "err", err)
 			return -1 // Will this work?
 		}
 
 	case lexer.ItemAddressingMode:
 		yylval.AddressingMode, err = NewAddressingMode(ni.Val)
 		if err != nil {
-			slog.Error("error processing addressing mode", "err", err)
+			logger.Error("error processing addressing mode", "err", err)
 			return -1 // Will this work?
 		}
 
@@ -203,5 +221,5 @@ func (x *corewarLex) Lex(yylval *corewarSymType) int {
 }
 
 func (x *corewarLex) Error(s string) {
-	slog.Error("parse error", "err", s)
+	logger.Error("parse error", "err", s)
 }
