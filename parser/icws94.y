@@ -16,20 +16,63 @@ import (
 	"github.com/pcolladosoto/corewarg/lexer"
 )
 
+type label string
+
+type operation struct {
+	opcode int
+	modifier int
+}
+
+type term struct {
+	label label
+	immediate int
+}
+
+type operand struct {
+	mode int
+	expr term
+}
+
+type instruction struct {
+	labels []label
+	operation operation
+	operandA operand
+	operandB operand
+}
+
+var programAST []instruction
+
 %}
 
 // Declare the type for values in the stack as well as available
 // tag names to declare token and non-terminal types.
 %union {
 	num int
-	line string
+	label label
+	operation operation
+	term term
+	labelList []label
+	comment string
+	instruction instruction
+	list []instruction
 }
 
-%type <line> instruction
+%type <operation> operation
+%type <num> opcode
+%type <num> modifier
+%type <num> mode
+%type <term> expr
+%type <term> term
+%type <labelList> label_list
+%type <comment> comment
+%type <instruction> instruction
+%type <instruction> line
+%type <list> list
+%type <list> assembly_file
 
 // Declare numeral tokens with the same number as declared in the lexer (i.e. lexer.ItemNumber)
 // This list is automatically generated with an awk(1) script that's also triggered with 'go generate'.
-%token <num> LABEL      1
+%token <label> LABEL    1
 %token <num> OPCODE     2
 %token <num> EOF        3
 %token <num> MODIFIER   4
@@ -72,75 +115,87 @@ import (
 %%
 
 assembly_file:
-	list {slog.Warn("reduction at assembly_file with list")}
+	list {slog.Warn("redn' at assembly_file", "LIST", $1); $$ = $1; programAST = $1}
 
 list:
-	  line      {slog.Warn("reduction at list with line")}
-	| line list {slog.Warn("reduction at list with line, list")}
+	  line      {slog.Warn("redn' at list", "LINE", $1)            ; $$ = []instruction{$1}}
+	| line list {slog.Warn("redn' at list", "LINE", $1, "LIST", $2); $$ = append($2, $1)}
 
 line:
-	  instruction {slog.Warn("reduction at line with instruction", "instruction", $1)}
-	| comment     {slog.Warn("reduction at line with comment")}
+	  instruction {slog.Warn("redn' at line", "INSTRUCTION", $1); $$ = $1}
+	| comment     {slog.Warn("redn' at line", "COMMENT", $1)}
 
-comment: EOL {slog.Warn("reduction at comment with EOL")}
+comment: EOL {slog.Warn("redn' at comment", "EOL", $1)}
 
 instruction:
-	  label_list operation mode expr           comment {slog.Warn("reduction at instruction with label_list, operation, mode, comment")}
-	|            operation mode expr           comment {slog.Warn("reduction at instruction with label_list, operation, mode, comment")}
-	| label_list operation mode expr mode expr comment {slog.Warn("reduction at instruction with label_list, operation, mode, expr, mode, expr, comment")}
-	|            operation mode expr mode expr comment {slog.Warn("reduction at instruction with label_list, operation, mode, expr, mode, expr, comment")}
+	  label_list operation mode expr           comment {
+		slog.Warn("redn' at instruction", "LABEL_LIST", $1, "OPERATION", $2, "MODE", $3, "EXPR", $4, "COMMENT", $5);
+		$$ = instruction{labels: $1, operation: $2, operandA: operand{mode: $3, expr: $4}}
+	}
+	|            operation mode expr           comment {
+		slog.Warn("redn' at instruction", "OPERATION", $1, "MODE", $2, "EXPR", $3, "COMMENT", $4);
+		$$ = instruction{labels: nil, operation: $1, operandA: operand{mode: $2, expr: $3}}
+	}
+	| label_list operation mode expr mode expr comment {
+		slog.Warn("redn' at instruction", "LABEL_LIST", $1, "OPERATION", $2, "MODE", $3, "EXPR", $4, "MODE", $5, "EXPR", $6, "COMMENT", $7);
+		$$ = instruction{labels: $1, operation: $2, operandA: operand{mode: $3, expr: $4}, operandB: operand{mode: $5, expr: $6}}
+	}
+	|            operation mode expr mode expr comment {
+		slog.Warn("redn' at instruction", "OPERATION", $1, "MODE", $2, "EXPR", $3, "MODE", $4, "EXPR", $5, "COMMENT", $6);
+		$$ = instruction{labels: nil, operation: $1, operandA: operand{mode: $2, expr: $3}, operandB: operand{mode: $4, expr: $5}}
+	}
 
 label_list:
-	  LABEL                {slog.Warn("reduction at label_list with LABEL")}
-	| LABEL label_list     {slog.Warn("reduction at label_list with LABEL, label_list")}
-	| LABEL EOL label_list {slog.Warn("reduction at label_list with LABEL, EOL")}
+	  LABEL                {slog.Warn("redn' at label_list", "LABEL", $1)                             ; $$ = []label{$1}}
+	| LABEL label_list     {slog.Warn("redn' at label_list", "LABEL", $1, "LABEL_LIST", $2)           ; $$ = append($2, $1)}
+	| LABEL EOL label_list {slog.Warn("redn' at label_list", "LABEL", $1, "EOL", $2, "LABEL_LIST", $3); $$ = append($3, $1)}
 
 operation:
-	  opcode          {slog.Warn("reduction at operation with opcode")}
-	| opcode modifier {slog.Warn("reduction at operation with opcode, modifier")}
+	  opcode          {slog.Warn("reduction at operation", "OPCODE", $1)                ; $$ = operation{$1, -1}}
+	| opcode modifier {slog.Warn("reduction at operation", "OPCODE", $1, "MODIFIER", $2); $$ = operation{$1, $2}}
 
 opcode:
-	  DAT {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| MOV {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| ADD {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| SUB {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| MUL {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| DIV {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| MOD {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| JMP {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| JMZ {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| JMN {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| DJN {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| CMP {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| SLT {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| SPL {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| ORG {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| EQU {slog.Warn("reduction at opcode", "OPCODE", $1)}
-	| END {slog.Warn("reduction at opcode", "OPCODE", $1)}
+	  DAT {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| MOV {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| ADD {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| SUB {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| MUL {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| DIV {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| MOD {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| JMP {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| JMZ {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| JMN {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| DJN {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| CMP {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| SLT {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| SPL {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| ORG {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| EQU {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
+	| END {slog.Warn("redn' at opcode", "OPCODE", $1); $$ = $1}
 
 modifier:
-	A    {slog.Warn("reduction at modifier", "MOD", $1)}
-	| B  {slog.Warn("reduction at modifier", "MOD", $1)}
-	| AB {slog.Warn("reduction at modifier", "MOD", $1)}
-	| BA {slog.Warn("reduction at modifier", "MOD", $1)}
-	| F  {slog.Warn("reduction at modifier", "MOD", $1)}
-	| X  {slog.Warn("reduction at modifier", "MOD", $1)}
-	| I  {slog.Warn("reduction at modifier", "MOD", $1)}
+	  A  {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
+	| B  {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
+	| AB {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
+	| BA {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
+	| F  {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
+	| X  {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
+	| I  {slog.Warn("redn' at modifier", "MODIFIER", $1); $$ = $1}
 
 mode:
-	HASH          {slog.Warn("reduction at mode", "MODE", $1)}
-	| DOLLAR      {slog.Warn("reduction at mode", "MODE", $1)}
-	| AT          {slog.Warn("reduction at mode", "MODE", $1)}
-	| LT          {slog.Warn("reduction at mode", "MODE", $1)}
-	| GT          {slog.Warn("reduction at mode", "MODE", $1)}
-	| /* empty */ {slog.Warn("reduction at mode", "MODE", "EMPTY")}
+	  HASH        {slog.Warn("redn' at mode", "MODE", $1);      $$ = $1}
+	| DOLLAR      {slog.Warn("redn' at mode", "MODE", $1);      $$ = $1}
+	| AT          {slog.Warn("redn' at mode", "MODE", $1);      $$ = $1}
+	| LT          {slog.Warn("redn' at mode", "MODE", $1);      $$ = $1}
+	| GT          {slog.Warn("redn' at mode", "MODE", $1);      $$ = $1}
+	| /* empty */ {slog.Warn("redn' at mode", "MODE", "EMPTY"); $$ = -1}
 
 expr:
-	term {slog.Warn("reduction at expr with term")}
+	term {slog.Warn("reduction at expr", "TERM", $1); $$ = $1}
 
 term:
-	  LABEL  {slog.Warn("reduction at term with LABEL")}
-	| NUMBER {slog.Warn("reduction at term with NUMBER")}
+	  LABEL  {slog.Warn("redn' at term",  "LABEL", $1); $$ = term{label: $1, immediate: -1}}
+	| NUMBER {slog.Warn("redn' at term", "NUMBER", $1); $$ = term{immediate: $1, label: ""}}
 
 %%
 
@@ -175,10 +230,15 @@ func (x *corewarLex) Lex(yylval *corewarSymType) int {
 
 		return int(lexer.ItemNumber)
 
+	case lexer.ItemLabel:
+		yylval.label = label(ni.Val)
+		return int(ni.Typ)
+
 	case lexer.ItemEOF:
 		return 0 // GoYacc expects EOF to be 0
 
 	default:
+		yylval.num = int(ni.Typ)
 		return int(ni.Typ)
 	}
 }
