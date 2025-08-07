@@ -9,3 +9,6 @@ bak/
 # Ignore GoYacc output files
 *_ygen.go
 y.output
+
+# Ignore JSON files (like exported ASTs and so on...)
+*.json
