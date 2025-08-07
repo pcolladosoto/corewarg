@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -38,13 +39,22 @@ func init() {
 	corewarDebug = 0
 }
 
-func printAST(ast []Instruction) {
+func marshalAST(ast []Instruction) {
 	enc, err := json.MarshalIndent(ast, "", "    ")
 	if err != nil {
 		fmt.Printf("error marshalling AST: %v\n", err)
 		return
 	}
 	fmt.Printf("programAST: %s\n", enc)
+}
+
+func printAST(ast []Instruction) {
+	// escape the '%' so that it makes it through...
+	format := fmt.Sprintf("%%0%dd", int(math.Ceil(math.Log10(float64(len(ast))))))
+	for i, ins := range ast {
+		// build the format string before supplying data!
+		fmt.Printf(fmt.Sprintf("%s: %%s\n", format), i, ins)
+	}
 }
 
 // Remember to run 'gp generate' beforehand!
@@ -73,7 +83,7 @@ func TestParserSingleFieldInstruction(t *testing.T) {
 			t.Errorf("test %d failed", i)
 		}
 	}
-	printAST(programAST)
+	marshalAST(programAST)
 }
 
 func TestParserNoMode(t *testing.T) {
@@ -83,7 +93,7 @@ func TestParserNoMode(t *testing.T) {
 			t.Errorf("test %d failed", i)
 		}
 	}
-	printAST(programAST)
+	marshalAST(programAST)
 }
 
 func TestParserFiles(t *testing.T) {
@@ -102,6 +112,7 @@ func TestParserFiles(t *testing.T) {
 		if rc := corewarParse(&corewarLex{l: lexer.Lex("parseTest", string(prog))}); rc != 0 {
 			t.Errorf("test %d failed", i)
 		}
+		marshalAST(programAST)
 		printAST(programAST)
 	}
 }

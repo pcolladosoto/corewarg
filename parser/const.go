@@ -59,7 +59,8 @@ func NewAddressingMode(s string) (AddressingMode, error) {
 
 const (
 	// instruction opcodes
-	DAT Opcode = iota
+	OPCODE_INVALID Opcode = iota // make Instruction{} invalid
+	DAT
 	MOV
 	ADD
 	SUB
@@ -76,19 +77,24 @@ const (
 	ORG
 	EQU
 	END
+)
 
+const (
 	// instruction modifiers
-	A OpcodeModifier = iota
+	OPCODE_MODIFIER_INVALID OpcodeModifier = iota // make Instruction{} invalid
+	A
 	B
 	AB
 	BA
 	F
 	X
 	I
-	NONE
+)
 
+const (
 	// addressing modes
-	Hash AddressingMode = iota
+	ADDRESSING_MODE_INVALID AddressingMode = iota // make Instruction{} invalid
+	Hash
 	Dollar
 	At
 	Lt

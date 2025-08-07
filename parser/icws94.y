@@ -38,6 +38,7 @@ type Instruction struct {
 	Labels []Label
 	Operation Operation
 	Operands []Operand
+	Comment Comment
 }
 
 var programAST []Instruction
@@ -65,7 +66,7 @@ var programAST []Instruction
 %type <Term> expr
 %type <Term> term
 %type <LabelList> label_list
-%type <Comment> comment
+%type <Instruction> comment
 %type <Instruction> instruction
 %type <Instruction> line
 %type <List> list
@@ -89,20 +90,48 @@ var programAST []Instruction
 %%
 
 assembly_file:
-	list {logger.Debug("redn' at assembly_file", "LIST", $1); $$ = $1; programAST = $1}
+	list {
+		logger.Debug("redn' at assembly_file", "LIST", $1);
+		$$ = $1;
+
+		programAST = $1
+
+		// Reverse the AST as the parser is a bottom up one!
+		for i := len(programAST)/2-1; i >= 0; i-- {
+			opp := len(programAST)-1-i
+			programAST[i], programAST[opp] = programAST[opp], programAST[i]
+		}
+	}
 
 list:
-	  line      {logger.Debug("redn' at list", "LINE", $1)            ; $$ = []Instruction{$1}}
-	| line list {logger.Debug("redn' at list", "LINE", $1, "LIST", $2); $$ = append($2, $1)}
+	  line {
+		logger.Debug("redn' at list", "LINE", $1);
+
+		// prevent comments from making it into the AST
+		if $1.Operation.Opcode != OPCODE_INVALID {
+			$$ = []Instruction{$1}
+		} else {
+			$$ = nil
+		}
+	}
+	| line list {
+		logger.Debug("redn' at list", "LINE", $1, "LIST", $2)
+
+		// prevent comments from making it into the AST
+		if $1.Operation.Opcode != OPCODE_INVALID {
+			$$ = append($2, $1)
+		} else {
+			$$ = $2
+		}
+	}
 
 line:
 	  instruction {logger.Debug("redn' at line", "INSTRUCTION", $1); $$ = $1}
 	| comment     {logger.Debug("redn' at line", "COMMENT", $1)}
 
 comment:
-	//   COMMENT EOL {logger.Debug("redn' at comment", "COMMENT", $1, "EOL", $2); $$ = $1}
-	  COMMENT EOL {logger.Debug("redn' at comment", "COMMENT", $1, "EOL", $2)}
-	| EOL         {logger.Debug("redn' at comment", "EOL", $1)}
+	  COMMENT EOL {logger.Debug("redn' at comment", "COMMENT", $1, "EOL", $2); $$ = Instruction{Comment: $1}}
+	| EOL         {logger.Debug("redn' at comment", "EOL", $1); $$ = Instruction{}}
 
 instruction:
 	  label_list operation mode expr           comment {
@@ -122,14 +151,14 @@ instruction:
 		$$ = Instruction{Labels: nil, Operation: $1, Operands: []Operand{{Mode: $2, Expr: $3}, {Mode: $4, Expr: $5}}}
 	}
 	// Special case for END
-	| label_list operation mode comment {
-		logger.Debug("redn' at instruction","LABEL_LIST", $1, "OPERATION", $2, "MODE", $3, "COMMENT", $4);
-		$$ = Instruction{Labels: $1, Operation: $2, Operands: []Operand{{Mode: $3}}}
+	| label_list operation comment {
+		logger.Debug("redn' at instruction","LABEL_LIST", $1, "OPERATION", $2, "COMMENT", $3);
+		$$ = Instruction{Labels: $1, Operation: $2, Operands: nil}
 	}
 	// Special case for END
-	|            operation mode comment {
-		logger.Debug("redn' at instruction", "OPERATION", $1, "MODE", $2, "COMMENT", $3);
-		$$ = Instruction{Labels: nil, Operation: $1, Operands: []Operand{{Mode: $2}}}
+	|            operation comment {
+		logger.Debug("redn' at instruction", "OPERATION", $1, "COMMENT", $2);
+		$$ = Instruction{Labels: nil, Operation: $1, Operands: nil}
 	}
 
 label_list:
@@ -138,18 +167,18 @@ label_list:
 	| LABEL EOL label_list {logger.Debug("redn' at label_list", "LABEL", $1, "EOL", $2, "LABEL_LIST", $3); $$ = append($3, $1)}
 
 operation:
-	  OPCODE                 {logger.Debug("redn' at operation", "OPCODE", $1)                       ; $$ = Operation{$1, NONE}}
+	  OPCODE                 {logger.Debug("redn' at operation", "OPCODE", $1)                       ; $$ = Operation{$1, OPCODE_MODIFIER_INVALID}}
 	| OPCODE OPCODE_MODIFIER {logger.Debug("redn' at operation", "OPCODE", $1, "OPCODE_MODIFIER", $2); $$ = Operation{$1, $2}}
 
 mode:
 	  ADDRESSING_MODE {logger.Debug("redn' at mode", "ADDRESSING_MODE", $1);      $$ = $1}
-	| /* empty */     {logger.Debug("redn' at mode", "ADDRESSING_MODE", "EMPTY")}
+	| /* empty */     {logger.Debug("redn' at mode", "ADDRESSING_MODE", "EMPTY"); $$ = ADDRESSING_MODE_INVALID}
 
 expr:
 	term {logger.Debug("reduction at expr", "TERM", $1); $$ = $1}
 
 term:
-	  LABEL  {logger.Debug("redn' at term",  "LABEL", $1); $$ = Term{Label: $1, Immediate: -1}}
+	  LABEL  {logger.Debug("redn' at term",  "LABEL", $1); $$ = Term{Label: $1, Immediate: 0}}
 	| NUMBER {logger.Debug("redn' at term", "NUMBER", $1); $$ = Term{Label: "", Immediate: $1}}
 
 %%
