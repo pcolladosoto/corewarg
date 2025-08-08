@@ -11,7 +11,7 @@ import (
 func init() {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		AddSource: true,
-		Level:     slog.LevelDebug,
+		Level:     slog.LevelInfo,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			// Remove time.
 			if a.Key == slog.TimeKey && len(groups) == 0 {
@@ -29,34 +29,55 @@ func init() {
 	slog.SetDefault(logger)
 }
 
-func TestLexLineComments(t *testing.T) {
-	test := `
-	; this is a comment
-	;this is a comment too!
-	; empty lines should be okay too!
+type tests []struct {
+	in   string
+	want []Item
+}
 
-	`
+func runTests(t *testing.T, ts tests) {
+	for i, test := range ts {
+		slog.Debug("new test", "i", i)
+		l := Lex("lexTest", test.in)
+		j := 0
+		for {
+			item := l.NextItem()
 
-	l := Lex("lineCommentsTest", test)
-	for {
-		i := l.NextItem()
+			if item.Typ == ItemEOF {
+				break
+			}
 
-		switch i.Typ {
-		case ItemEOF:
-			return
-		default:
-			t.Errorf("got an item other than EOF: type: %s, val: %q", i.Typ, i.Val)
+			if item.Typ != test.want[j].Typ || item.Val != test.want[j].Val {
+				t.Errorf("test %d: got type: %s, val: %q; want type: %s, val: %q",
+					i, item.Typ, item.Val, test.want[j].Typ, test.want[j].Val,
+				)
+				break
+			}
+
+			j++
+		}
+		if j != len(test.want) {
+			t.Errorf("test %d: got %d items, but expected %d", i, j, len(test.want))
 		}
 	}
+}
+
+func TestLexLineComments(t *testing.T) {
+	ts := tests{
+		{"", nil},
+		{"\n", nil},
+		{"\n\n", nil},
+		{"; this is a comment", nil}, // we need "\n" terminations
+		{"; this is a comment\n", []Item{{ItemComment, " this is a comment"}, {ItemEOL, "\n"}}},
+		{";this is a comment too\n", []Item{{ItemComment, "this is a comment too"}, {ItemEOL, "\n"}}},
+	}
+
+	runTests(t, ts)
 }
 
 func TestLexSingleInstruction(t *testing.T) {
-	tests := []struct {
-		in   string
-		want []Item
-	}{
+	ts := tests{
 		{"target  DAT.F   #0,     #0", []Item{{ItemLabel, "target"}, {ItemOpcode, "DAT"}, {ItemOpcodeModifier, "F"}, {ItemAddressingMode, "#"}, {ItemNumber, "0"}, {ItemAddressingMode, "#"}, {ItemNumber, "0"}}},
-		{"target  DAT.F   #-5,   #15", []Item{{ItemLabel, "target"}, {ItemOpcode, "DAT"}, {ItemOpcodeModifier, "F"}, {ItemAddressingMode, "#"}, {ItemNumber, "-5"}, {ItemAddressingMode, "#"}, {ItemNumber, "15"}}},
+		{"target  DAT.F   #-5,   #15", []Item{{ItemLabel, "target"}, {ItemOpcode, "DAT"}, {ItemOpcodeModifier, "F"}, {ItemAddressingMode, "#"}, {ItemOperand, "-"}, {ItemNumber, "5"}, {ItemAddressingMode, "#"}, {ItemNumber, "15"}}},
 		{"ADD.AB  #step,   target", []Item{{ItemOpcode, "ADD"}, {ItemOpcodeModifier, "AB"}, {ItemAddressingMode, "#"}, {ItemLabel, "step"}, {ItemLabel, "target"}}},
 		{"MOV.AB  #0,     @target", []Item{{ItemOpcode, "MOV"}, {ItemOpcodeModifier, "AB"}, {ItemAddressingMode, "#"}, {ItemNumber, "0"}, {ItemAddressingMode, "@"}, {ItemLabel, "target"}}},
 		{"JMP.A    start", []Item{{ItemOpcode, "JMP"}, {ItemOpcodeModifier, "A"}, {ItemLabel, "start"}}},
@@ -69,44 +90,13 @@ func TestLexSingleInstruction(t *testing.T) {
 		{"\n\t\nfoo\nfii\t JMP.A  \t  start", []Item{{ItemLabel, "foo"}, {ItemEOL, "\n"}, {ItemLabel, "fii"}, {ItemOpcode, "JMP"}, {ItemOpcodeModifier, "A"}, {ItemLabel, "start"}}},
 	}
 
-	for testI, test := range tests {
-		l := Lex("singleInstructionTest", test.in)
-		j := 0
-		for {
-			i := l.NextItem()
-
-			slog.Info("got item", "testI", testI, "type", i.Typ, "val", i.Val)
-
-			if i.Typ == ItemEOF {
-				break
-			}
-
-			if j > len(test.want)-1 {
-				j++
-				continue
-			}
-
-			if i.Typ != test.want[j].Typ || i.Val != test.want[j].Val {
-				t.Errorf("test %d: got type: %s, val: %q; want type: %s, val: %q",
-					testI, i.Typ, i.Val, test.want[j].Typ, test.want[j].Val)
-			}
-
-			j++
-		}
-
-		if j != len(test.want) {
-			t.Errorf("test %d: got %d items, but expected %d", testI, j, len(test.want))
-		}
-	}
+	runTests(t, ts)
 }
 
 func TestLexTwoInstructions(t *testing.T) {
-	tests := []struct {
-		in   string
-		want []Item
-	}{
+	ts := tests{
 		{"target  DAT.F   #0,     #0", []Item{{ItemLabel, "target"}, {ItemOpcode, "DAT"}, {ItemOpcodeModifier, "F"}, {ItemAddressingMode, "#"}, {ItemNumber, "0"}, {ItemAddressingMode, "#"}, {ItemNumber, "0"}}},
-		{"target  DAT.F   #-5,   #15", []Item{{ItemLabel, "target"}, {ItemOpcode, "DAT"}, {ItemOpcodeModifier, "F"}, {ItemAddressingMode, "#"}, {ItemNumber, "-5"}, {ItemAddressingMode, "#"}, {ItemNumber, "15"}}},
+		{"target  DAT.F   #-5,   #15", []Item{{ItemLabel, "target"}, {ItemOpcode, "DAT"}, {ItemOpcodeModifier, "F"}, {ItemAddressingMode, "#"}, {ItemOperand, "-"}, {ItemNumber, "5"}, {ItemAddressingMode, "#"}, {ItemNumber, "15"}}},
 		{"ADD.AB  #step,   target", []Item{{ItemOpcode, "ADD"}, {ItemOpcodeModifier, "AB"}, {ItemAddressingMode, "#"}, {ItemLabel, "step"}, {ItemLabel, "target"}}},
 		{"MOV.AB  #0,     @target", []Item{{ItemOpcode, "MOV"}, {ItemOpcodeModifier, "AB"}, {ItemAddressingMode, "#"}, {ItemNumber, "0"}, {ItemAddressingMode, "@"}, {ItemLabel, "target"}}},
 		{"JMP.A    start", []Item{{ItemOpcode, "JMP"}, {ItemOpcodeModifier, "A"}, {ItemLabel, "start"}}},
@@ -119,35 +109,7 @@ func TestLexTwoInstructions(t *testing.T) {
 		{"\n\t\nfoo\nfii\t JMP.A  \t  start", []Item{{ItemLabel, "foo"}, {ItemEOL, "\n"}, {ItemLabel, "fii"}, {ItemOpcode, "JMP"}, {ItemOpcodeModifier, "A"}, {ItemLabel, "start"}}},
 	}
 
-	for testI, test := range tests {
-		l := Lex("singleInstructionTest", test.in)
-		j := 0
-		for {
-			i := l.NextItem()
-
-			slog.Info("got item", "testI", testI, "type", i.Typ, "val", i.Val)
-
-			if i.Typ == ItemEOF {
-				break
-			}
-
-			if j > len(test.want)-1 {
-				j++
-				continue
-			}
-
-			if i.Typ != test.want[j].Typ || i.Val != test.want[j].Val {
-				t.Errorf("test %d: got type: %s, val: %q; want type: %s, val: %q",
-					testI, i.Typ, i.Val, test.want[j].Typ, test.want[j].Val)
-			}
-
-			j++
-		}
-
-		if j != len(test.want) {
-			t.Errorf("test %d: got %d items, but expected %d", testI, j, len(test.want))
-		}
-	}
+	runTests(t, ts)
 }
 
 func TestLexFiles(t *testing.T) {
@@ -157,7 +119,7 @@ func TestLexFiles(t *testing.T) {
 		t.Fatalf("error reading dir contents: %v", err)
 	}
 
-	want := map[string][]Item{
+	wants := map[string][]Item{
 		"dwarf.rc": {
 			{ItemComment, "redcode"},
 			{ItemEOL, "\n"},
@@ -239,40 +201,34 @@ func TestLexFiles(t *testing.T) {
 		},
 	}
 
-	for i, file := range paths {
+	ts := tests{}
+
+	for _, file := range paths {
 		fName := file.Name()
 
 		prog, err := os.ReadFile(fmt.Sprintf("%s/%s", dataDir, fName))
 		if err != nil {
 			t.Errorf("error reading file %q: %v", fName, err)
+			continue
 		}
 
-		l := Lex("fileTest", string(prog))
-		j := 0
-		for {
-			item := l.NextItem()
-			if item.Typ == ItemEOF {
-				break
-			}
-
-			if item.Typ != want[fName][j].Typ || item.Val != want[fName][j].Val {
-				t.Fatalf("test %d: got type: %s, val: %q; want type: %s, val: %q",
-					i, item.Typ, item.Val, want[fName][j].Typ, want[fName][j].Val,
-				)
-			}
-
-			slog.Warn("got item", "typ", item.Typ, "val", item.Val)
-
-			j++
+		want, ok := wants[fName]
+		if !ok {
+			t.Errorf("no wants defined for file %q", fName)
+			continue
 		}
+
+		ts = append(ts, struct {
+			in   string
+			want []Item
+		}{in: string(prog), want: want})
 	}
+
+	runTests(t, ts)
 }
 
 func TestLexOperands(t *testing.T) {
-	tests := []struct {
-		in   string
-		want []Item
-	}{
+	ts := tests{
 		{"a + b\n", []Item{{ItemLabel, "a"}, {ItemOperand, "+"}, {ItemLabel, "b"}, {ItemEOL, "\n"}}},
 		{"a + b + c\n", []Item{{ItemLabel, "a"}, {ItemOperand, "+"}, {ItemLabel, "b"}, {ItemOperand, "+"}, {ItemLabel, "c"}, {ItemEOL, "\n"}}},
 		{"a - b\n", []Item{{ItemLabel, "a"}, {ItemOperand, "-"}, {ItemLabel, "b"}, {ItemEOL, "\n"}}},
@@ -290,27 +246,5 @@ func TestLexOperands(t *testing.T) {
 		},
 	}
 
-	for i, test := range tests {
-		l := Lex("operandTest", test.in)
-		j := 0
-		for {
-			item := l.NextItem()
-
-			if item.Typ == ItemEOF {
-				break
-			}
-
-			if item.Typ != test.want[j].Typ || item.Val != test.want[j].Val {
-				t.Errorf("test %d: got type: %s, val: %q; want type: %s, val: %q",
-					i, item.Typ, item.Val, test.want[j].Typ, test.want[j].Val,
-				)
-				break
-			}
-
-			j++
-		}
-		if j != len(test.want) {
-			t.Errorf("test %d: got %d items, but expected %d", i, j, len(test.want))
-		}
-	}
+	runTests(t, ts)
 }
