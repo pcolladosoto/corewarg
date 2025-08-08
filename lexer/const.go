@@ -82,6 +82,14 @@ var key = map[string]ItemType{
 	"@": ItemAddressingMode,
 	"<": ItemAddressingMode,
 	">": ItemAddressingMode,
+
+	"+": ItemOperand,
+	"-": ItemOperand,
+	"*": ItemOperand,
+	"/": ItemOperand,
+	"%": ItemOperand,
+	"(": ItemOperand,
+	")": ItemOperand,
 }
 
 func (i ItemType) String() string {

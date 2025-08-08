@@ -267,3 +267,50 @@ func TestLexFiles(t *testing.T) {
 		}
 	}
 }
+
+func TestLexOperands(t *testing.T) {
+	tests := []struct {
+		in   string
+		want []Item
+	}{
+		{"a + b\n", []Item{{ItemLabel, "a"}, {ItemOperand, "+"}, {ItemLabel, "b"}, {ItemEOL, "\n"}}},
+		{"a + b + c\n", []Item{{ItemLabel, "a"}, {ItemOperand, "+"}, {ItemLabel, "b"}, {ItemOperand, "+"}, {ItemLabel, "c"}, {ItemEOL, "\n"}}},
+		{"a - b\n", []Item{{ItemLabel, "a"}, {ItemOperand, "-"}, {ItemLabel, "b"}, {ItemEOL, "\n"}}},
+		{"a - b - c\n", []Item{{ItemLabel, "a"}, {ItemOperand, "-"}, {ItemLabel, "b"}, {ItemOperand, "-"}, {ItemLabel, "c"}, {ItemEOL, "\n"}}},
+		{"a * b\n", []Item{{ItemLabel, "a"}, {ItemOperand, "*"}, {ItemLabel, "b"}, {ItemEOL, "\n"}}},
+		{"a * b * c\n", []Item{{ItemLabel, "a"}, {ItemOperand, "*"}, {ItemLabel, "b"}, {ItemOperand, "*"}, {ItemLabel, "c"}, {ItemEOL, "\n"}}},
+		{"a / b\n", []Item{{ItemLabel, "a"}, {ItemOperand, "/"}, {ItemLabel, "b"}, {ItemEOL, "\n"}}},
+		{"a / b / c\n", []Item{{ItemLabel, "a"}, {ItemOperand, "/"}, {ItemLabel, "b"}, {ItemOperand, "/"}, {ItemLabel, "c"}, {ItemEOL, "\n"}}},
+		{"a % b\n", []Item{{ItemLabel, "a"}, {ItemOperand, "%"}, {ItemLabel, "b"}, {ItemEOL, "\n"}}},
+		{"a % b % c\n", []Item{{ItemLabel, "a"}, {ItemOperand, "%"}, {ItemLabel, "b"}, {ItemOperand, "%"}, {ItemLabel, "c"}, {ItemEOL, "\n"}}},
+		{"a + (b)\n", []Item{{ItemLabel, "a"}, {ItemOperand, "+"}, {ItemOperand, "("}, {ItemLabel, "b"}, {ItemOperand, ")"}, {ItemEOL, "\n"}}},
+		{"a * (b + c)\n", []Item{
+			{ItemLabel, "a"}, {ItemOperand, "*"}, {ItemOperand, "("}, {ItemLabel, "b"}, {ItemOperand, "+"}, {ItemLabel, "c"},
+			{ItemOperand, ")"}, {ItemEOL, "\n"}},
+		},
+	}
+
+	for i, test := range tests {
+		l := Lex("operandTest", test.in)
+		j := 0
+		for {
+			item := l.NextItem()
+
+			if item.Typ == ItemEOF {
+				break
+			}
+
+			if item.Typ != test.want[j].Typ || item.Val != test.want[j].Val {
+				t.Errorf("test %d: got type: %s, val: %q; want type: %s, val: %q",
+					i, item.Typ, item.Val, test.want[j].Typ, test.want[j].Val,
+				)
+				break
+			}
+
+			j++
+		}
+		if j != len(test.want) {
+			t.Errorf("test %d: got %d items, but expected %d", i, j, len(test.want))
+		}
+	}
+}

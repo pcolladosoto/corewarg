@@ -42,7 +42,7 @@ func lexInstruction(l *Lexer) stateFn {
 	slog.Debug("entering lexInstruction", "start", l.start, "pos", l.pos, "c", string(l.peek()))
 	for {
 		switch r := l.next(); {
-		case r == '+' || r == '-' || ('0' <= r && r <= '9'):
+		case '0' <= r && r <= '9':
 			l.backup()
 			return lexNumber
 		case isAlphaNumeric(r):
@@ -52,6 +52,9 @@ func lexInstruction(l *Lexer) stateFn {
 			l.ignore()
 			return lexIdentifier
 		case strings.Index("#$@<>", string(r)) != -1: // addressing mode
+			l.emit(key[string(r)])
+			continue
+		case strings.Index("+-*/%()", string(r)) != -1: // operand
 			l.emit(key[string(r)])
 			continue
 		case r == commentDelim: // gobble trailing comments
