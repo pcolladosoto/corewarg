@@ -1,4 +1,4 @@
-//go:generate goyacc -o icws94_ygen.go -p "corewar" icws94.y
+//go:generate go tool golang.org/x/tools/cmd/goyacc -o icws94_ygen.go -p "corewar" icws94.y
 package parser
 
 import (
