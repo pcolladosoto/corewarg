@@ -129,9 +129,9 @@ func lexComment(l *Lexer) stateFn {
 	// read until the end of line
 	for {
 		n := l.next()
-		slog.Debug("lexComment", "n", string(n), "l.start", l.start, "l.pos", l.pos, "l.input[l.pos:l.pos+2]", l.input[l.pos:l.pos+2])
+		slog.Debug("lexComment", "n", string(n), "l.start", l.start, "l.pos", l.pos, "l.width", l.width)
 		if isEOL(n) {
-			l.backup()
+			l.backup() // careful, l.peek changes l.width and doesn't rever it!
 			l.emit(ItemComment)
 			l.next()
 			l.emit(ItemEOL)
