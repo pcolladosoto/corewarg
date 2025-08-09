@@ -86,8 +86,27 @@ var programAST []Instruction
 %token <Num>              NUMBER          8
 %token <Num>              OPERAND         9
 
+// These tokens aren't defined in the lexer; they're implicitly created by Lex() (see below)
+// based on the lexer.Item.val of incoming lexer.ItemOperand tokens. That way we don't have
+// to mess around with so many tokens on the lexer where they don't really have any meaning.
+%token '+' '-' '*' '/' '(' ')'
+
 // End the declarations
 %%
+
+/*
+ * Note how the AST is built in each production's action. In them, $n where n is an integer
+ * beginning at 1 is substituted by the non-terminal on the right hand side of the production.
+ * The pseudo variable $$ allows one to return a value from the action. This value can then be
+ * leveraged in subsequent productions through the corresponding $n. That is:
+ *
+ *   foo: bar baz { $$ = $1 + $2 } // returns the addition of bar and baz
+ *   fee: foo faa { $1 } // $1 is substituted by the value of foo whic is bar + baz
+ *
+ * Note how terminals and nonterminals (can) have a Go type assigned in the declarations
+ * section. These types are honored when combining nonterminals in actions. Be sure to
+ * check the generated golang file for an example.
+ */
 
 assembly_file:
 	list {
@@ -181,6 +200,53 @@ term:
 	  LABEL  {logger.Debug("redn' at term",  "LABEL", $1); $$ = Term{Label: $1, Immediate: 0}}
 	| NUMBER {logger.Debug("redn' at term", "NUMBER", $1); $$ = Term{Label: "", Immediate: $1}}
 
+
+// NOTE: % returns the remainder of integer division!
+
+top:
+	expr
+	{
+		if $1.IsInt() {
+			fmt.Println($1.Num().String())
+		} else {
+			fmt.Println($1.String())
+		}
+	}
+
+expr:
+	  expr1
+	| '+' expr {$$ = $2}
+	| '-' expr {$$ = $2.Neg($2)}
+
+expr1:
+	  expr2
+	| expr1 '+' expr2 {$$ = $1.Add($1, $3)}
+	| expr1 '-' expr2 {$$ = $1.Sub($1, $3)}
+
+expr2:
+	  expr3
+	| expr2 '*' expr3 {$$ = $1.Mul($1, $3)}
+	| expr2 '/' expr3 {$$ = $1.Quo($1, $3)}
+
+expr3:
+	  NUM
+	| '(' expr ')' {$$ = $2}
+
+// Or...
+%left '+'
+%left '*'
+%%
+
+/*** Rules Section ***/
+start : expr '\n'		{exit(1);}
+      ;
+
+expr: expr '+' expr     {print_operator('+');}
+    | expr '*' expr     {print_operator('*');}
+    | '(' expr ')'
+    | DIGIT             {printf("NUM%d ",pos);}
+    ;
+
 %%
 
 // This struct should adhere to the corewarLexer interface:
@@ -206,6 +272,15 @@ func (x *corewarLex) Lex(yylval *corewarSymType) int {
 
 	var err error
 	switch ni.Typ {
+	case lexer.ItemOperand:
+			runes := []rune(ni.Val)
+
+			if len(runes) != 1 { // should be the case, but who knows...
+				logger.Error("wrong value for ItemOperand", "ni.Val", ni.Val)
+				return -1 // Will this work?
+			}
+
+			return int(runes[0])
 	case lexer.ItemNumber:
 		pInt, err := strconv.ParseInt(ni.Val, 10, 32)
 		if err != nil {
